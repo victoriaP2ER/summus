@@ -148,6 +148,8 @@ export function useCapture() {
           Math.max(options.bars, store.songBars()),
         )
       } catch (e) {
+        // Keep the real error in the console; the message on screen stays plain.
+        console.error('[summus] Aufnahme fehlgeschlagen', e)
         useStore.getState().patch({ isRecording: false })
         setError(micErrorMessage(e))
         setState('idle')

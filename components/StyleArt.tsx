@@ -158,6 +158,52 @@ function Motifs({ motif }: { motif: Motif }) {
           ))}
         </g>
       )
+    case 'bars':
+      return (
+        <g fill={light}>
+          {[10, 26, 6, 34, 14, 30, 8, 22].map((h, i) => (
+            <rect key={i} x={12 + i * 13} y={58 - h} width="8" height={h} rx="2" />
+          ))}
+          <rect x="0" y="60" width="120" height="12" fill={ink} opacity="0.4" />
+        </g>
+      )
+    case 'leaf':
+      return (
+        <g>
+          <path d="M60 62 C36 52 28 30 40 12 C62 16 76 34 72 56 Z" fill={light} opacity="0.9" />
+          <path d="M40 12 C52 28 56 44 60 62" stroke={ink} strokeWidth="1.6" fill="none" />
+          <path d="M6 64 H114" stroke={ink} strokeWidth="3" />
+        </g>
+      )
+    case 'ring':
+      return (
+        <g fill="none" stroke={light} strokeWidth="1.6">
+          {[10, 18, 26, 34].map((r, i) => (
+            <circle key={i} cx="60" cy="36" r={r} opacity={1 - i * 0.2} />
+          ))}
+          <circle cx="60" cy="36" r="4" fill={light} stroke="none" />
+        </g>
+      )
+    case 'crystal':
+      return (
+        <g>
+          <path d="M60 8 L82 30 L60 64 L38 30 Z" fill={light} opacity="0.9" />
+          <path d="M38 30 H82 M60 8 V64 M48 19 L72 41 M72 19 L48 41" stroke={ink} strokeWidth="1.4" fill="none" />
+          <path d="M14 54 L18 46 L22 54 L18 62 Z" fill={light} opacity="0.6" />
+          <path d="M98 50 L102 42 L106 50 L102 58 Z" fill={light} opacity="0.6" />
+        </g>
+      )
+    case 'amp':
+      return (
+        <g>
+          <rect x="16" y="10" width="88" height="52" rx="4" fill="none" stroke={light} strokeWidth="2.5" />
+          <circle cx="48" cy="36" r="15" fill="none" stroke={light} strokeWidth="2" />
+          <circle cx="48" cy="36" r="5" fill={light} />
+          <rect x="72" y="18" width="26" height="5" rx="2.5" fill={ink} />
+          <circle cx="78" cy="46" r="4" fill={light} />
+          <circle cx="90" cy="46" r="4" fill={light} />
+        </g>
+      )
     case 'pulse':
       return (
         <g>

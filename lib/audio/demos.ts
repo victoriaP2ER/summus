@@ -105,25 +105,55 @@ export const DEMOS: Record<string, StyleDemo> = {
   punk: {
     bars: 2,
     drums: [
-      ...hits('kick', [0, 2, 4, 6]),
+      ...hits('kick', [0, 0.5, 2, 4, 4.5, 6]),
       ...hits('snare', [1, 3, 5, 7]),
-      ...hits('hat', pulse(0, 8, 0.5), 0.55),
+      ...hits('hat', pulse(0, 8, 0.5), 0.5),
+      ...hits('openhat', [7.5], 0.7),
     ],
+    // Straight eighths on the root — the engine room of every punk song.
     bass: line(Array(16).fill(-12), 0, 0.5, 0.44, 1),
+    // Power chords: root and fifth only, hammered in eighths.
     chords: [
-      ...chord([0, 7], 0, 1.9, 0.9),
-      ...chord([5, 12], 2, 1.9, 0.9),
-      ...chord([-2, 5], 4, 1.9, 0.9),
-      ...chord([0, 7], 6, 1.9, 0.9),
+      ...pulse(0, 2, 0.5).flatMap((at) => chord([0, 7], at, 0.42, 0.85)),
+      ...pulse(2, 4, 0.5).flatMap((at) => chord([5, 12], at, 0.42, 0.85)),
+      ...pulse(4, 6, 0.5).flatMap((at) => chord([7, 14], at, 0.42, 0.85)),
+      ...pulse(6, 8, 0.5).flatMap((at) => chord([5, 12], at, 0.42, 0.85)),
     ],
     lead: [
       { step: 12, at: 0, len: 0.45 },
       { step: 12, at: 0.5, len: 0.45 },
       { step: 19, at: 1, len: 0.9 },
-      { step: 17, at: 2, len: 0.9 },
-      { step: 12, at: 4, len: 0.45 },
-      { step: 15, at: 4.5, len: 0.45 },
-      { step: 19, at: 5, len: 1.9 },
+      { step: 17, at: 2, len: 1.9 },
+      { step: 19, at: 4, len: 0.45 },
+      { step: 17, at: 4.5, len: 0.45 },
+      { step: 12, at: 5, len: 2.9 },
+    ],
+  },
+
+  classicRock: {
+    bars: 2,
+    drums: [
+      ...hits('kick', [0, 2.5, 3, 4, 6.5]),
+      ...hits('snare', [1, 3, 5, 7]),
+      ...hits('hat', pulse(0, 8, 0.5), 0.45),
+      ...hits('openhat', [3.5], 0.6),
+    ],
+    bass: line([-12, -12, -5, -12, -12, -12, -3, -5, -10, -10, -3, -10, -12, -12, -5, -7], 0, 0.5, 0.44, 0.95),
+    // Held power chords, the way a rock riff sits under a vocal.
+    chords: [
+      ...chord([0, 7, 12], 0, 1.8, 0.7),
+      ...chord([0, 7, 12], 2, 1.8, 0.6),
+      ...chord([-2, 5, 10], 4, 1.8, 0.7),
+      ...chord([3, 10, 15], 6, 1.8, 0.6),
+    ],
+    lead: [
+      { step: 12, at: 0.5, len: 0.45 },
+      { step: 15, at: 1, len: 0.45 },
+      { step: 17, at: 1.5, len: 0.9 },
+      { step: 15, at: 2.5, len: 1.4 },
+      { step: 10, at: 4.5, len: 0.45 },
+      { step: 12, at: 5, len: 0.45 },
+      { step: 15, at: 5.5, len: 1.9 },
     ],
   },
 
@@ -297,6 +327,169 @@ export const DEMOS: Record<string, StyleDemo> = {
     ],
   },
 
+  jrpg: {
+    bars: 4,
+    drums: [
+      ...hits('kick', [0, 4, 8, 12], 0.6),
+      ...hits('rim', [2, 6, 10, 14], 0.4),
+      ...hits('hat', pulse(0, 16, 1), 0.25),
+    ],
+    // i – VI – III – VII: the progression half of adventure music runs on.
+    bass: [
+      ...line([-12, -5], 0, 2, 1.8, 0.8),
+      ...line([-4, 3], 4, 2, 1.8, 0.8),
+      ...line([-9, -2], 8, 2, 1.8, 0.8),
+      ...line([-2, 5], 12, 2, 1.8, 0.8),
+    ],
+    chords: [
+      ...chord([0, 3, 7], 0, 3.8, 0.45),
+      ...chord([8, 12, 15], 4, 3.8, 0.45),
+      ...chord([3, 7, 10], 8, 3.8, 0.45),
+      ...chord([10, 14, 17], 12, 3.8, 0.45),
+    ],
+    lead: [
+      { step: 12, at: 0, len: 1.4 },
+      { step: 15, at: 1.5, len: 0.45 },
+      { step: 14, at: 2, len: 1.9 },
+      { step: 15, at: 4, len: 0.9 },
+      { step: 17, at: 5, len: 0.9 },
+      { step: 15, at: 6, len: 1.9 },
+      { step: 10, at: 8, len: 1.4 },
+      { step: 12, at: 9.5, len: 0.45 },
+      { step: 15, at: 10, len: 1.9 },
+      { step: 14, at: 12, len: 1.9 },
+      { step: 12, at: 14, len: 1.9 },
+    ],
+  },
+
+  trap: {
+    bars: 2,
+    drums: [
+      ...hits('kick', [0, 3, 4, 6.5], 0.95),
+      ...hits('clap', [2, 6], 0.85),
+      ...hits('hat', pulse(0, 8, 0.5), 0.4),
+      // The rolls that make trap sound like trap.
+      ...hits('hat', [1.75, 1.875, 3.25, 3.375, 3.5, 7.25, 7.375, 7.5, 7.625], 0.3),
+    ],
+    bass: [
+      { step: -24, at: 0, len: 2.8, vel: 1 },
+      { step: -24, at: 3, len: 0.9, vel: 0.9 },
+      { step: -19, at: 4, len: 2.8, vel: 1 },
+      { step: -22, at: 7, len: 0.9, vel: 0.9 },
+    ],
+    chords: [...chord([0, 3, 7, 10], 0, 3.8, 0.35), ...chord([-2, 2, 5, 9], 4, 3.8, 0.35)],
+    lead: [
+      { step: 15, at: 0.5, len: 0.45, vel: 0.6 },
+      { step: 19, at: 1, len: 0.9, vel: 0.6 },
+      { step: 15, at: 2.5, len: 1.4, vel: 0.55 },
+      { step: 14, at: 4.5, len: 0.45, vel: 0.6 },
+      { step: 17, at: 5, len: 1.9, vel: 0.6 },
+    ],
+  },
+
+  reggae: {
+    bars: 2,
+    drums: [
+      // One drop: nothing on beat one, the kick lands on three.
+      ...hits('kick', [2, 6], 0.95),
+      ...hits('snare', [2, 6], 0.7),
+      ...hits('rim', [1, 3, 5, 7], 0.4),
+      ...hits('hat', pulse(0.5, 8, 1), 0.45),
+    ],
+    bass: [
+      { step: -12, at: 0, len: 0.9, vel: 1 },
+      { step: -12, at: 1.5, len: 0.45, vel: 0.85 },
+      { step: -5, at: 2, len: 1.4, vel: 0.95 },
+      { step: -10, at: 4, len: 0.9, vel: 1 },
+      { step: -10, at: 5.5, len: 0.45, vel: 0.85 },
+      { step: -3, at: 6, len: 1.4, vel: 0.95 },
+    ],
+    // The skank: chords only ever on the offbeat.
+    chords: pulse(0.5, 8, 1).flatMap((at, i) =>
+      chord(i < 4 ? [0, 3, 7] : [-2, 2, 5], at, 0.32, 0.6),
+    ),
+    lead: [
+      { step: 12, at: 1.5, len: 0.45 },
+      { step: 15, at: 2, len: 1.4 },
+      { step: 10, at: 5.5, len: 0.45 },
+      { step: 12, at: 6, len: 1.4 },
+    ],
+  },
+
+  disco: {
+    bars: 2,
+    drums: [
+      ...hits('kick', pulse(0, 8, 1)),
+      ...hits('clap', [1, 3, 5, 7], 0.8),
+      ...hits('openhat', pulse(0.5, 8, 1), 0.55),
+      ...hits('hat', pulse(0, 8, 1), 0.3),
+    ],
+    // The octave-jumping bass every disco record is built on.
+    bass: line([-12, 0, -12, 0, -12, 0, -12, 0, -10, 2, -10, 2, -10, 2, -10, 2], 0, 0.5, 0.42, 0.95),
+    chords: [
+      ...chord([0, 3, 7, 10], 0.5, 0.3, 0.7),
+      ...chord([0, 3, 7, 10], 1.5, 0.3, 0.6),
+      ...chord([0, 3, 7, 10], 2.25, 0.3, 0.65),
+      ...chord([-2, 2, 5, 9], 4.5, 0.3, 0.7),
+      ...chord([-2, 2, 5, 9], 5.5, 0.3, 0.6),
+      ...chord([-2, 2, 5, 9], 6.25, 0.3, 0.65),
+    ],
+    lead: [
+      { step: 19, at: 0, len: 0.45 },
+      { step: 17, at: 0.5, len: 0.45 },
+      { step: 15, at: 1, len: 0.9 },
+      { step: 12, at: 2, len: 1.9 },
+      { step: 17, at: 4, len: 0.45 },
+      { step: 15, at: 4.5, len: 0.45 },
+      { step: 14, at: 5, len: 2.9 },
+    ],
+  },
+
+  bossa: {
+    bars: 2,
+    drums: [
+      ...hits('kick', [0, 1.5, 4, 5.5], 0.6),
+      // The clave that carries the whole feel.
+      ...hits('rim', [0, 1.5, 3, 4.5, 6], 0.5),
+      ...hits('hat', pulse(0, 8, 0.5), 0.25),
+    ],
+    bass: line([-12, -5, -12, -5, -10, -3, -10, -3], 0, 1, 0.85, 0.85),
+    chords: [
+      ...chord([0, 3, 7, 10], 0, 0.9, 0.5),
+      ...chord([0, 3, 7, 10], 1.5, 0.9, 0.45),
+      ...chord([0, 3, 7, 10], 3, 0.9, 0.45),
+      ...chord([-2, 2, 5, 9], 4, 0.9, 0.5),
+      ...chord([-2, 2, 5, 9], 5.5, 0.9, 0.45),
+      ...chord([-2, 2, 5, 9], 7, 0.9, 0.45),
+    ],
+    lead: [
+      { step: 14, at: 0.5, len: 0.9 },
+      { step: 12, at: 1.5, len: 1.4 },
+      { step: 10, at: 3, len: 0.9 },
+      { step: 12, at: 4.5, len: 0.9 },
+      { step: 14, at: 5.5, len: 2.4 },
+    ],
+  },
+
+  ambient: {
+    bars: 4,
+    drums: [],
+    bass: [
+      { step: -24, at: 0, len: 7.8, vel: 0.6 },
+      { step: -19, at: 8, len: 7.8, vel: 0.6 },
+    ],
+    chords: [
+      ...chord([0, 4, 7, 11], 0, 7.8, 0.4),
+      ...chord([-3, 2, 5, 9], 8, 7.8, 0.4),
+    ],
+    lead: [
+      { step: 12, at: 1, len: 2.9, vel: 0.5 },
+      { step: 16, at: 4, len: 3.9, vel: 0.45 },
+      { step: 14, at: 9, len: 2.9, vel: 0.5 },
+      { step: 11, at: 12, len: 3.9, vel: 0.45 },
+    ],
+  },
+
   chiptune: {
     bars: 2,
     drums: [
@@ -313,3 +506,5 @@ export const DEMOS: Record<string, StyleDemo> = {
 export function demoFor(styleId: string): StyleDemo {
   return DEMOS[styleId] ?? DEMOS.synthwave
 }
+
+export type { StyleDemo as Demo }

@@ -19,6 +19,14 @@ Links, die den Song selbst enthalten.
   rhythmisch aufs Raster geschoben.
 - **Song-Skizze.** Eine einzige längere Aufnahme wird automatisch in Lead,
   Bass, Fläche und Drums aufgeteilt.
+- **Band dazu.** Aus der gesummten Melodie wird ein ganzer Song: Bass, Akkorde
+  und Schlagzeug folgen der Harmonie, die die Melodie vorgibt — im Groove der
+  gewählten Stilrichtung.
+- **19 Stilrichtungen** von Orchester über Punk und Trap bis Videospiel-Epos,
+  jede mit drei Grooves und einer eigenen Instrumentenauswahl.
+- **Ohne eigene Melodie anfangen.** Groove aussuchen, laufen lassen,
+  drübersingen — inklusive eines Melodievorschlags, der bei jedem Klick neu
+  generiert wird.
 - **Tempo aus der Aufnahme.** Klopf den Takt mit — die App liest das Tempo
   daraus ab und stellt das Metronom danach.
 - **Overdub.** Beim Aufnehmen läuft das bereits Vorhandene mit.
@@ -46,10 +54,13 @@ npm run dev
 | Tempo | `lib/audio/tempo.ts` | Autokorrelation der Onset-Hüllkurve plus Phasensuche |
 | Autotune | `lib/audio/autotune.ts` | Granulares Pitch- und Time-Shifting per Overlap-Add |
 | Klang | `lib/audio/instruments.ts` | Tone.js — echte Aufnahmen über `Tone.Sampler`, Synthesizer für elektronische Klänge |
+| Begleitung | `lib/audio/accompany.ts` | Taktweise Grundtöne aus der Melodie, Rhythmus aus dem Groove der Stilrichtung |
+| Melodien | `lib/audio/melody.ts` | Generiert über die Akkordtöne des Grooves, mit Rhythmuszellen und festem Seed |
 
 ## Instrumente
 
-36 Instrumente sind **echte Aufnahmen** (`public/samples/`, rund 9 MB, pro
+37 Instrumente sind **echte Aufnahmen** — inklusive eines echten Schlagzeugs
+(Bass Drum, Snare, Hi-Hat, Tom, Clap statt synthetischer Nachbauten) — (`public/samples/`, rund 9 MB, pro
 Instrument einzeln nachgeladen): Streicher, Holz- und Blechbläser, Blockflöten,
 Okarina, Mundharmonika, Flügel, Cembalo, Orgel, Harmonium, Gitarren, Harfen,
 Đàn tranh, Vibraphon, Marimba, Balafon, Glockenspiel, Röhrenglocken, Kalimba

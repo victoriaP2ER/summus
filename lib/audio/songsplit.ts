@@ -36,7 +36,7 @@ export const SPLIT_MODES: { id: SplitMode; label: string; hint: string }[] = [
  * The note that carries each bar — longest total sounding time wins, which
  * tracks what the ear hears as the bar's root far better than the first note.
  */
-function barRoots(notes: Note[], bars: number): (number | null)[] {
+export function barRoots(notes: Note[], bars: number): (number | null)[] {
   const roots: (number | null)[] = []
   for (let bar = 0; bar < bars; bar++) {
     const from = bar * 4

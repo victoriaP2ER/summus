@@ -13,6 +13,9 @@ import { ShareDialog } from './ShareDialog'
 import { TopBar } from './TopBar'
 import { VocalEditor } from './VocalEditor'
 import { engine } from '@/lib/audio/engine'
+import { buildAccompaniment } from '@/lib/audio/accompany'
+import { grooves, grooveToLoops } from '@/lib/audio/grooves'
+import { STYLES, style as findStyle } from '@/lib/audio/styles'
 import { collectAudioAsync, saveSong } from '@/lib/library'
 import { uid } from '@/lib/music'
 import { selectedLoop, useStore } from '@/lib/store'
@@ -139,6 +142,44 @@ export function Studio({ startGuided = false }: { startGuided?: boolean }) {
 
   const hasLanes = loops.length > 0
   const showArrangement = loops.length > 1 || advanced
+  const melodyLane = loops.find((l) => l.kind === 'melodic' && l.notes.length > 2)
+  const canAddBand = !!melodyLane && !loops.some((l) => l.kind === 'drum')
+
+  /** Everything playing, from the top — the state you want while jamming. */
+  const playAll = useCallback(() => {
+    setTimeout(() => {
+      void (async () => {
+        const next = useStore.getState()
+        await engine().start()
+        await engine().prepare(next.loops)
+        engine().setBpm(next.bpm)
+        engine().metronomeEnabled = false
+        engine().playSong(next.loops, next.clips, next.songBars())
+        next.patch({ isPlaying: true, playMode: 'song', metronome: false, playhead: 0 })
+      })()
+    }, 150)
+  }, [])
+
+  const addBand = useCallback(() => {
+    const state = useStore.getState()
+    const lane = state.loops.find((l) => l.kind === 'melodic' && l.notes.length > 2)
+    if (!lane) return
+    const band = buildAccompaniment(lane, styleId, state.scaleId, state.loops.length)
+    if (!band.length) return
+    state.addLoops(band)
+    playAll()
+  }, [playAll, styleId])
+
+  const startFromGroove = useCallback(
+    (style: string, grooveId: string) => {
+      const state = useStore.getState()
+      state.patch({ bpm: findStyle(style).bpm, scaleId: findStyle(style).scaleId })
+      setStyleId(style)
+      state.addLoops(grooveToLoops(style, grooveId, 4, 60, Date.now() % 100000))
+      playAll()
+    },
+    [playAll],
+  )
 
   const editor =
     tab === 'song' && showArrangement ? (
@@ -150,7 +191,7 @@ export function Studio({ startGuided = false }: { startGuided?: boolean }) {
         <PianoRoll loop={loop} />
       )
     ) : (
-      <EmptyStudio onGuided={() => setGuided(true)} />
+      <EmptyStudio onGuided={() => setGuided(true)} onGroove={startFromGroove} />
     )
 
   return (
@@ -200,8 +241,20 @@ export function Studio({ startGuided = false }: { startGuided?: boolean }) {
                   {loop.name} · {loop.bars} Takte · {loop.notes.length} Noten
                 </span>
               )}
-              <span className="ml-auto font-mono text-[10px] text-ink-500">
-                {savedAt ? 'gespeichert' : ''}
+              <span className="ml-auto flex items-center gap-2">
+                {canAddBand && (
+                  <button
+                    type="button"
+                    onClick={addBand}
+                    title="Bass, Akkorde und Schlagzeug passend zu deiner Melodie"
+                    className="rounded-lg border border-accent/50 bg-accent/10 px-2.5 py-1 text-[11px] font-medium text-accent hover:bg-accent/20"
+                  >
+                    🎸 Band dazu
+                  </button>
+                )}
+                <span className="font-mono text-[10px] text-ink-500">
+                  {savedAt ? 'gespeichert' : ''}
+                </span>
               </span>
             </div>
           )}
@@ -284,24 +337,80 @@ function TabButton({
   )
 }
 
-function EmptyStudio({ onGuided }: { onGuided: () => void }) {
+function EmptyStudio({
+  onGuided,
+  onGroove,
+}: {
+  onGuided: () => void
+  onGroove: (styleId: string, grooveId: string) => void
+}) {
+  const [jamStyle, setJamStyle] = useState<string | null>(null)
+
   return (
     <div className="flex h-full items-center justify-center p-6">
-      <div className="max-w-md text-center">
+      <div className="max-w-lg text-center">
         <h2 className="bg-gradient-to-br from-accent to-hot bg-clip-text text-2xl font-bold text-transparent">
           Summ einfach los.
         </h2>
         <p className="mt-3 text-sm leading-relaxed text-ink-300">
-          Drück unten rechts auf <strong className="text-ink-100">Aufnehmen</strong> und summ eine
-          Melodie — summus macht daraus eine Spur, die du sofort hören kannst.
+          Drück unten rechts auf <strong className="text-ink-100">+ Spur aufnehmen</strong> und summ
+          eine Melodie — summus macht daraus eine Spur, die du sofort hören kannst.
         </p>
-        <button
-          type="button"
-          onClick={onGuided}
-          className="mt-5 rounded-lg bg-gradient-to-b from-accent to-accent-strong px-4 py-2 text-sm font-semibold text-ink-950 shadow-lg shadow-accent/20 hover:brightness-110"
-        >
-          Lieber Schritt für Schritt
-        </button>
+        <div className="mt-5 flex flex-wrap justify-center gap-2">
+          <button
+            type="button"
+            onClick={onGuided}
+            className="rounded-lg bg-gradient-to-b from-accent to-accent-strong px-4 py-2 text-sm font-semibold text-ink-950 shadow-lg shadow-accent/20 hover:brightness-110"
+          >
+            Lieber Schritt für Schritt
+          </button>
+          <button
+            type="button"
+            onClick={() => setJamStyle(jamStyle ? null : 'synthwave')}
+            className="rounded-lg border border-ink-600 px-4 py-2 text-sm text-ink-200 hover:border-accent hover:text-accent"
+          >
+            Mit einem Groove starten
+          </button>
+        </div>
+
+        {jamStyle && (
+          <div className="mt-5 rounded-xl border border-ink-700 bg-ink-900/70 p-3 text-left">
+            <p className="mb-2 text-[11px] text-ink-300">
+              Such dir einen Beat aus — er landet als fertige Spuren im Song, und du summst
+              einfach drüber.
+            </p>
+            <div className="scroll-thin mb-2 flex gap-1 overflow-x-auto pb-1">
+              {STYLES.map((style) => (
+                <button
+                  key={style.id}
+                  type="button"
+                  onClick={() => setJamStyle(style.id)}
+                  className={clsx(
+                    'shrink-0 rounded-lg px-2 py-1 text-[11px]',
+                    jamStyle === style.id
+                      ? 'bg-accent text-ink-950'
+                      : 'bg-ink-800 text-ink-300 hover:bg-ink-700',
+                  )}
+                >
+                  {style.emoji} {style.label}
+                </button>
+              ))}
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {grooves(jamStyle).map((g) => (
+                <button
+                  key={g.id}
+                  type="button"
+                  title={g.hint}
+                  onClick={() => onGroove(jamStyle, g.id)}
+                  className="rounded-lg border border-ink-600 bg-ink-850 px-2.5 py-1.5 text-[11px] text-ink-100 hover:border-accent hover:text-accent"
+                >
+                  ▶ {g.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

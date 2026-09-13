@@ -1,7 +1,7 @@
 import { analyzePitchTrack, segmentNotes, type DetectedNote } from './analyze'
 import { detectOnsets } from './onset'
 import { buildSlices } from './autotune'
-import { quantize, secondsToBeats, snapToScale, uid, clamp } from '../music'
+import { dedupeNotes, quantize, secondsToBeats, snapToScale, uid, clamp } from '../music'
 import type { DrumVoice, Note, VocalSlice } from '../types'
 
 export interface ConvertOptions {
@@ -80,7 +80,7 @@ export function detectedToNotes(detected: DetectedNote[], options: ConvertOption
     }
   }
 
-  return notes.filter((n) => n.duration > 0.02)
+  return dedupeNotes(notes.filter((n) => n.duration > 0.02))
 }
 
 export interface DrumConvertOptions extends ConvertOptions {
@@ -125,13 +125,7 @@ export function takeToDrumNotes(buffer: AudioBuffer, options: DrumConvertOptions
   })
 
   // Two hits of the same voice on the same grid slot are one hit.
-  const seen = new Set<string>()
-  return notes.filter((n) => {
-    const key = `${n.drum}@${n.start.toFixed(3)}`
-    if (seen.has(key)) return false
-    seen.add(key)
-    return true
-  })
+  return dedupeNotes(notes)
 }
 
 /** Sung audio → vocal slices that autotune can re-pitch and re-time. */

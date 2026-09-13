@@ -58,6 +58,41 @@ export function loadInstrumentSamples(folder: string): Promise<NoteBuffers> {
   return job
 }
 
+const KIT_VOICES = ['kick', 'snare', 'rim', 'tom', 'hat', 'openhat', 'clap'] as const
+let kitBuffers: Partial<Record<string, Tone.ToneAudioBuffer>> | null = null
+let kitJob: Promise<void> | null = null
+
+/** One-shot recordings of a real kit, loaded once for the whole app. */
+export function loadDrumKit(): Promise<void> {
+  if (kitBuffers) return Promise.resolve()
+  if (kitJob) return kitJob
+  kitJob = (async () => {
+    const entries = await Promise.all(
+      KIT_VOICES.map(async (voice) => {
+        const buffer = new Tone.ToneAudioBuffer()
+        try {
+          await buffer.load(`/samples/drums/${voice}.mp3`)
+          return [voice, buffer] as const
+        } catch {
+          return [voice, undefined] as const
+        }
+      }),
+    )
+    kitBuffers = Object.fromEntries(entries)
+    kitJob = null
+    announce()
+  })()
+  return kitJob
+}
+
+export function drumBuffer(voice: string): AudioBuffer | null {
+  return kitBuffers?.[voice]?.get() ?? null
+}
+
+export function drumKitReady(): boolean {
+  return kitBuffers !== null
+}
+
 export function cachedSamples(folder: string): NoteBuffers | null {
   return cache.get(folder) ?? null
 }

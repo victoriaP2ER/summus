@@ -1,28 +1,30 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { clsx } from './clsx'
 import { Button, Meter } from './ui'
 import { Logo } from './Logo'
 import { StyleArt } from './StyleArt'
+import { InstrumentPicker } from './InstrumentPicker'
 import { useMicLevel } from './useMicLevel'
 import { engine } from '@/lib/audio/engine'
 import { preset, prepareInstrument } from '@/lib/audio/instruments'
-import { demoFor } from '@/lib/audio/demos'
-import { InstrumentPicker } from './InstrumentPicker'
 import { micErrorMessage } from '@/lib/audio/recorder'
 import { STYLES, style as findStyle, styleInstruments } from '@/lib/audio/styles'
+import { grooves, grooveToLoops } from '@/lib/audio/grooves'
+import { buildAccompaniment } from '@/lib/audio/accompany'
 import { takeToDrumNotes, takeToNotes } from '@/lib/audio/convert'
 import { detectTempo, tidyBpm } from '@/lib/audio/tempo'
 import { LOOP_COLORS } from '@/lib/music'
 import { useStore } from '@/lib/store'
 import type { InstrumentId } from '@/lib/types'
 
-type Step = 'mic' | 'melody' | 'style' | 'instrument' | 'beat'
+type Step = 'mic' | 'start' | 'melody' | 'style' | 'instrument' | 'beat'
+type Mode = 'melodyFirst' | 'beatFirst'
 
-const STEP_ORDER: Step[] = ['mic', 'melody', 'style', 'instrument', 'beat']
-const STEP_LABELS: Record<Step, string> = {
+const LABELS: Record<Step, string> = {
   mic: 'Mikrofon',
+  start: 'Start',
   melody: 'Melodie',
   style: 'Richtung',
   instrument: 'Klang',
@@ -39,36 +41,40 @@ export function NewSongFlow({
   onFinish: () => void
 }) {
   const [step, setStep] = useState<Step>('mic')
+  const [mode, setMode] = useState<Mode>('melodyFirst')
   const [micReady, setMicReady] = useState(false)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [counter, setCounter] = useState('')
   const [recording, setRecording] = useState<'idle' | 'countin' | 'running' | 'working'>('idle')
   const [melodyId, setMelodyId] = useState<string | null>(null)
-  const [beatId, setBeatId] = useState<string | null>(null)
-  const [demoOn, setDemoOn] = useState(false)
+  const [bandIds, setBandIds] = useState<string[]>([])
+  const [grooveId, setGrooveId] = useState('basis')
+  const [seed, setSeed] = useState(1)
   const [picking, setPicking] = useState(false)
 
   const store = useStore()
   const { level, peak } = useMicLevel(micReady && (step === 'mic' || recording !== 'idle'))
-
   const melody = store.loops.find((l) => l.id === melodyId) ?? null
+  const order: Step[] =
+    mode === 'beatFirst'
+      ? ['mic', 'start', 'style', 'melody', 'instrument']
+      : ['mic', 'start', 'melody', 'style', 'instrument', 'beat']
 
-  // Live readout while a take runs.
   useEffect(() => {
     if (recording === 'idle' || recording === 'working') return
     let frame = 0
     const tick = () => {
-      const window = engine().recordWindow
-      if (window) {
+      const window_ = engine().recordWindow
+      if (window_) {
         const now = engine().now()
         const beat = 60 / store.bpm
-        if (now < window.transportStart) {
-          setCounter(String(Math.max(1, Math.ceil((window.transportStart - now) / beat))))
+        if (now < window_.transportStart) {
+          setCounter(String(Math.max(1, Math.ceil((window_.transportStart - now) / beat))))
           setRecording('countin')
         } else {
-          const into = (now - window.transportStart) / beat
-          setCounter(`Takt ${Math.min(Math.floor(into / 4) + 1, window.bars)} von ${window.bars}`)
+          const into = (now - window_.transportStart) / beat
+          setCounter(`Takt ${Math.min(Math.floor(into / 4) + 1, window_.bars)} von ${window_.bars}`)
           setRecording('running')
         }
       }
@@ -77,6 +83,26 @@ export function NewSongFlow({
     frame = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(frame)
   }, [recording, store.bpm])
+
+  /** Play everything there is, from the top. */
+  const playAll = useCallback(() => {
+    setTimeout(() => {
+      void (async () => {
+        const next = useStore.getState()
+        await engine().start()
+        await engine().prepare(next.loops)
+        engine().setBpm(next.bpm)
+        engine().metronomeEnabled = false
+        engine().playSong(next.loops, next.clips, next.songBars())
+        next.patch({ isPlaying: true, playMode: 'song', metronome: false, playhead: 0 })
+      })()
+    }, 150)
+  }, [])
+
+  const stopAll = useCallback(() => {
+    engine().stop()
+    useStore.getState().patch({ isPlaying: false })
+  }, [])
 
   const openMic = async () => {
     setError('')
@@ -92,52 +118,19 @@ export function NewSongFlow({
     }
   }
 
-  /** The genre's own groove at its own tempo — far more telling than a hum. */
-  const playDemo = useCallback(
-    async (id: string, lead?: string) => {
-      const chosen = findStyle(id)
-      const voice = lead ?? chosen.lead
-      engine().stop()
-      useStore.getState().patch({ isPlaying: false })
-      await engine().start()
-      await Promise.all([voice, chosen.chords, chosen.bass].map(prepareInstrument))
-      engine().playDemo(
-        demoFor(id),
-        { lead: voice, chords: chosen.chords, bass: chosen.bass },
-        chosen.bpm,
-      )
-      setDemoOn(true)
-    },
-    [],
-  )
+  // ---------------------------------------------------------------- melody
 
-  const stopDemo = useCallback(() => {
-    engine().stopDemo()
-    setDemoOn(false)
-  }, [])
-
-  const playMelody = useCallback(() => {
-    const state = useStore.getState()
-    const loop = state.loops.find((l) => l.id === melodyId)
-    if (!loop) return
-    engine().stopDemo()
-    setDemoOn(false)
-    engine().metronomeEnabled = false
-    engine().setBpm(state.bpm)
-    engine().playLoop(loop, state.loops)
-    state.patch({ isPlaying: true, metronome: false })
-  }, [melodyId])
-
-  const recordMelody = async () => {
+  const captureMelody = async () => {
     setError('')
     setRecording('countin')
+    const bars = mode === 'beatFirst' ? Math.max(4, store.loops[0]?.bars ?? 4) : 4
     try {
       await engine().record(
         {
           countInBars: 1,
-          bars: 4,
-          overdub: false,
-          metronome: true,
+          bars,
+          overdub: mode === 'beatFirst',
+          metronome: mode === 'melodyFirst',
           micMode: store.micMode,
           latencyMs: store.latencyMs,
           onFinished: (buffer) => {
@@ -162,23 +155,29 @@ export function NewSongFlow({
               setRecording('idle')
               return
             }
-            const chosen = findStyle(styleId)
             const loop = store.addLoop({
               name: 'Melodie',
-              instrument: chosen.lead,
-              bars: 4,
+              instrument: findStyle(styleId).lead,
+              bars,
               notes,
               color: LOOP_COLORS[0],
             })
             setMelodyId(loop.id)
-            if (tempo.confidence > 0.35) store.patch({ bpm: tidyBpm(tempo.bpm) })
+            if (mode === 'melodyFirst' && tempo.confidence > 0.35) {
+              store.patch({ bpm: tidyBpm(tempo.bpm) })
+            }
             setRecording('idle')
-            setStep('style')
+            if (mode === 'beatFirst') {
+              playAll()
+              setStep('instrument')
+            } else {
+              setStep('style')
+            }
           },
         },
         store.loops,
         store.clips,
-        4,
+        bars,
       )
     } catch (e) {
       setError(micErrorMessage(e))
@@ -194,7 +193,7 @@ export function NewSongFlow({
       const response = await fetch('/demo/beispiel-melodie.mp3')
       const buffer = await engine().decode(await response.blob())
       const tempo = detectTempo(buffer)
-      const bpm = tidyBpm(tempo.bpm)
+      const bpm = mode === 'beatFirst' ? store.bpm : tidyBpm(tempo.bpm)
       const notes = takeToNotes(buffer, {
         bpm,
         grid: 0.25,
@@ -202,17 +201,22 @@ export function NewSongFlow({
         scaleRoot: store.scaleRoot,
         scaleId: store.scaleId,
       })
-      const chosen = findStyle(styleId)
+      const bars = Math.max(4, Math.ceil(((notes.at(-1)?.start ?? 12) + 1) / 4))
       const loop = store.addLoop({
         name: 'Melodie',
-        instrument: chosen.lead,
-        bars: Math.max(4, Math.ceil((notes.at(-1)?.start ?? 16) / 4)),
+        instrument: findStyle(styleId).lead,
+        bars,
         notes,
         color: LOOP_COLORS[0],
       })
       setMelodyId(loop.id)
-      store.patch({ bpm })
-      setStep('style')
+      if (mode === 'melodyFirst') store.patch({ bpm })
+      if (mode === 'beatFirst') {
+        playAll()
+        setStep('instrument')
+      } else {
+        setStep('style')
+      }
     } catch {
       setError('Das Beispiel konnte nicht geladen werden.')
     } finally {
@@ -220,23 +224,60 @@ export function NewSongFlow({
     }
   }
 
-  const applyStyle = (id: string) => {
+  // ----------------------------------------------------------------- style
+
+  /**
+   * Picking a direction is the moment the song appears: the melody keeps its
+   * notes and gets a bass, chords and drums built around the harmony it
+   * implies — or, when the beat comes first, a ready-made groove to sing over.
+   */
+  const applyStyle = (id: string, feel = grooveId) => {
     onStyleChange(id)
+    setGrooveId(feel)
     const chosen = findStyle(id)
-    store.patch({ bpm: chosen.bpm, scaleId: chosen.scaleId })
-    if (melodyId) store.updateLoop(melodyId, { instrument: chosen.lead })
-    void playDemo(id)
+    stopAll()
+
+    const state = useStore.getState()
+    for (const loopId of bandIds) state.removeLoop(loopId)
+    setBandIds([])
+
+    state.patch({ bpm: chosen.bpm, scaleId: chosen.scaleId })
+
+    if (mode === 'beatFirst') {
+      const fresh = useStore.getState()
+      for (const l of fresh.loops) fresh.removeLoop(l.id)
+      // A new seed each time, so clicking around never gives the same tune twice.
+      const nextSeed = seed + 1
+      setSeed(nextSeed)
+      const groove = grooveToLoops(id, feel, 4, 60, nextSeed)
+      useStore.getState().addLoops(groove)
+      setBandIds(groove.map((l) => l.id))
+      playAll()
+      return
+    }
+
+    if (!melodyId) return
+    const current = useStore.getState()
+    const lane = current.loops.find((l) => l.id === melodyId)
+    if (!lane) return
+    current.updateLoop(lane.id, { instrument: chosen.lead })
+    const band = buildAccompaniment({ ...lane, instrument: chosen.lead }, id, chosen.scaleId, 1)
+    if (band.length) {
+      useStore.getState().addLoops(band)
+      setBandIds(band.map((l) => l.id))
+    }
+    playAll()
   }
 
   const applyInstrument = (id: InstrumentId) => {
-    if (melodyId) store.updateLoop(melodyId, { instrument: id })
-    void prepareInstrument(id).then(() => {
-      if (engine().demoPlaying) engine().setDemoRole('lead', id)
-      else void playDemo(styleId, id)
-    })
+    if (!melodyId) return
+    store.updateLoop(melodyId, { instrument: id })
+    void prepareInstrument(id)
   }
 
-  const recordBeat = async () => {
+  // ------------------------------------------------------------------ beat
+
+  const captureBeat = async () => {
     setError('')
     setRecording('countin')
     try {
@@ -245,7 +286,7 @@ export function NewSongFlow({
           countInBars: 1,
           bars: melody?.bars ?? 4,
           overdub: true,
-          metronome: true,
+          metronome: false,
           micMode: store.micMode,
           latencyMs: store.latencyMs,
           onFinished: (buffer) => {
@@ -261,21 +302,16 @@ export function NewSongFlow({
               setRecording('idle')
               return
             }
-            const loop = store.addLoop({
-              name: 'Beat',
+            store.addLoop({
+              name: 'Eigener Beat',
               kind: 'drum',
               instrument: 'drums',
               bars: melody?.bars ?? 4,
               notes,
-              color: LOOP_COLORS[3],
+              color: LOOP_COLORS[5],
             })
-            setBeatId(loop.id)
             setRecording('idle')
-            setTimeout(() => {
-              const state = useStore.getState()
-              engine().playSong(state.loops, state.clips, state.songBars())
-              state.patch({ isPlaying: true, playMode: 'song' })
-            }, 120)
+            playAll()
           },
         },
         store.loops,
@@ -289,41 +325,38 @@ export function NewSongFlow({
   }
 
   const finish = () => {
-    engine().stopDemo()
-    engine().stop()
-    store.patch({ isPlaying: false, metronome: true })
+    stopAll()
+    store.patch({ metronome: true })
     onFinish()
   }
 
   const busyRecording = recording !== 'idle'
-  const currentIndex = STEP_ORDER.indexOf(step)
+  const currentIndex = order.indexOf(step)
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col overflow-y-auto bg-ink-950/98 backdrop-blur">
       <header className="flex items-center justify-between border-b border-ink-800 px-5 py-3">
         <Logo size="sm" />
         <div className="hidden items-center gap-1.5 sm:flex">
-          {STEP_ORDER.map((s, i) => (
-            <div key={s} className="flex items-center gap-1.5">
-              <span
-                className={clsx(
-                  'rounded-full px-2 py-0.5 text-[10px] font-medium transition-colors',
-                  i === currentIndex
-                    ? 'bg-accent text-ink-950'
-                    : i < currentIndex
-                      ? 'bg-mint/20 text-mint'
-                      : 'text-ink-500',
-                )}
-              >
-                {i < currentIndex ? '✓ ' : ''}
-                {STEP_LABELS[s]}
-              </span>
-              {i < STEP_ORDER.length - 1 && <span className="text-ink-700">·</span>}
-            </div>
+          {order.map((s, i) => (
+            <span
+              key={s}
+              className={clsx(
+                'rounded-full px-2 py-0.5 text-[10px] font-medium transition-colors',
+                i === currentIndex
+                  ? 'bg-accent text-ink-950'
+                  : i < currentIndex
+                    ? 'bg-mint/20 text-mint'
+                    : 'text-ink-500',
+              )}
+            >
+              {i < currentIndex ? '✓ ' : ''}
+              {LABELS[s]}
+            </span>
           ))}
         </div>
         <Button size="sm" onClick={finish}>
-          {melodyId ? 'Zum Studio' : 'Abbrechen'}
+          {store.loops.length ? 'Zum Studio' : 'Abbrechen'}
         </Button>
       </header>
 
@@ -351,20 +384,14 @@ export function NewSongFlow({
                 <p className="text-center text-[11px] text-ink-400">
                   Mit Kopfhörern wird es am saubersten — dann kommt das Playback nicht ins Mikro.
                 </p>
-                <Button
-                  variant="accent"
-                  size="lg"
-                  className="w-full"
-                  onClick={() => setStep('melody')}
-                  disabled={peak <= 0.01}
-                >
+                <Button variant="accent" size="lg" className="w-full" onClick={() => setStep('start')}>
                   Weiter
                 </Button>
               </div>
             )}
             <button
               type="button"
-              onClick={() => setStep('melody')}
+              onClick={() => setStep('start')}
               className="text-[11px] text-ink-400 underline-offset-2 hover:text-ink-200 hover:underline"
             >
               Ohne Mikrofon fortfahren
@@ -372,16 +399,63 @@ export function NewSongFlow({
           </StepShell>
         )}
 
+        {step === 'start' && (
+          <StepShell
+            title="Womit fängst du an?"
+            lead="Beides führt zum selben Ziel — such dir aus, was dir leichter fällt."
+          >
+            <div className="grid w-full gap-3 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setMode('melodyFirst')
+                  setStep('melody')
+                }}
+                className="rounded-2xl border border-ink-700 bg-ink-850 p-5 text-left transition-colors hover:border-accent"
+              >
+                <span className="text-3xl">🎵</span>
+                <h3 className="mt-2 text-sm font-bold text-ink-100">Erst die Melodie</h3>
+                <p className="mt-1 text-[11px] leading-relaxed text-ink-400">
+                  Du summst drauflos. Danach suchst du eine Richtung aus und hörst sofort, wie deine
+                  Melodie mit Bass, Akkorden und Schlagzeug in diesem Stil klingt.
+                </p>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMode('beatFirst')
+                  setStep('style')
+                }}
+                className="rounded-2xl border border-ink-700 bg-ink-850 p-5 text-left transition-colors hover:border-accent"
+              >
+                <span className="text-3xl">🥁</span>
+                <h3 className="mt-2 text-sm font-bold text-ink-100">Erst der Beat</h3>
+                <p className="mt-1 text-[11px] leading-relaxed text-ink-400">
+                  Du suchst dir einen fertigen Groove aus, lässt ihn laufen und singst deine Melodie
+                  einfach darüber. Zum Mitwippen und Ausprobieren.
+                </p>
+              </button>
+            </div>
+          </StepShell>
+        )}
+
         {step === 'melody' && (
           <StepShell
-            title="Jetzt summ eine Melodie"
-            lead="Du hörst vier Klicks zum Einzählen. Danach hast du vier Takte Zeit — summ einfach drauflos, Töne aushalten hilft."
+            title={mode === 'beatFirst' ? 'Jetzt sing drüber' : 'Jetzt summ eine Melodie'}
+            lead={
+              mode === 'beatFirst'
+                ? 'Der Groove läuft mit. Ein Takt wird eingezählt, dann summ einfach über das, was du hörst.'
+                : 'Du hörst vier Klicks zum Einzählen. Danach hast du vier Takte Zeit — summ einfach drauflos, Töne aushalten hilft.'
+            }
           >
             <RecordCircle
               state={recording}
               counter={counter}
               label="Aufnahme starten"
-              onStart={recordMelody}
+              onStart={() => {
+                stopAll()
+                void captureMelody()
+              }}
               onStop={() => engine().cancelRecord()}
             />
             {!busyRecording && (
@@ -398,8 +472,12 @@ export function NewSongFlow({
 
         {step === 'style' && (
           <StepShell
-            title="In welche Richtung soll es gehen?"
-            lead="Such dir eine Stimmung aus — deine Melodie bleibt, nur der Klang drumherum ändert sich. Du hörst es sofort."
+            title={mode === 'beatFirst' ? 'Such dir einen Groove aus' : 'In welche Richtung soll es gehen?'}
+            lead={
+              mode === 'beatFirst'
+                ? 'Antippen legt den Beat als fertige Spuren an und spielt ihn sofort — du kannst gleich darüber singen.'
+                : 'Antippen baut aus deiner Melodie einen ganzen Song: Bass, Akkorde und Schlagzeug in diesem Stil, passend zu den Tönen, die du gesummt hast.'
+            }
           >
             <div className="grid w-full grid-cols-2 gap-2.5 sm:grid-cols-3">
               {STYLES.map((s) => (
@@ -408,8 +486,8 @@ export function NewSongFlow({
                   type="button"
                   onClick={() => applyStyle(s.id)}
                   className={clsx(
-                    'group overflow-hidden rounded-xl border text-left transition-all',
-                    styleId === s.id
+                    'overflow-hidden rounded-xl border text-left transition-all',
+                    styleId === s.id && bandIds.length
                       ? 'border-accent ring-2 ring-accent/40'
                       : 'border-ink-700 hover:border-ink-500',
                   )}
@@ -426,54 +504,90 @@ export function NewSongFlow({
                 </button>
               ))}
             </div>
-            <div className="flex flex-wrap items-center justify-center gap-2">
-              <Button size="lg" onClick={() => (demoOn ? stopDemo() : void playDemo(styleId))}>
-                {demoOn ? '⏸ Beispiel stoppen' : '▶ Beispiel hören'}
-              </Button>
-              <Button variant="accent" size="lg" onClick={() => setStep('instrument')}>
-                Weiter
-              </Button>
-            </div>
-            <p className="text-[11px] text-ink-400">
-              Du hörst einen typischen {findStyle(styleId).label}-Groove bei{' '}
-              {findStyle(styleId).bpm} BPM. Leertaste pausiert.
-            </p>
+
+            {bandIds.length > 0 && (
+              <>
+                <div className="flex flex-wrap items-center justify-center gap-1.5">
+                  {grooves(styleId).map((g) => (
+                    <button
+                      key={g.id}
+                      type="button"
+                      title={g.hint}
+                      onClick={() => applyStyle(styleId, g.id)}
+                      className={clsx(
+                        'rounded-lg border px-2.5 py-1 text-[11px] font-medium transition-colors',
+                        grooveId === g.id
+                          ? 'border-accent bg-accent/15 text-accent'
+                          : 'border-ink-700 bg-ink-850 text-ink-300 hover:border-ink-500',
+                      )}
+                    >
+                      {g.label}
+                    </button>
+                  ))}
+                </div>
+                <p className="rounded-lg border border-mint/40 bg-mint/10 px-3 py-2 text-[11px] text-mint">
+                  ✓ {mode === 'beatFirst' ? 'Groove läuft' : 'Dein Song läuft'} — {findStyle(styleId).label} bei{' '}
+                  {findStyle(styleId).bpm} BPM
+                </p>
+                <div className="flex flex-wrap justify-center gap-2">
+                  <Button size="lg" onClick={() => (store.isPlaying ? stopAll() : playAll())}>
+                    {store.isPlaying ? '⏸ Stopp' : '▶ Anhören'}
+                  </Button>
+                  {mode === 'beatFirst' && (
+                    <Button size="lg" onClick={() => applyStyle(styleId, grooveId)} title="Neue Melodie über denselben Groove">
+                      🎲 Andere Melodie
+                    </Button>
+                  )}
+                  <Button
+                    variant="accent"
+                    size="lg"
+                    onClick={() => setStep(mode === 'beatFirst' ? 'melody' : 'instrument')}
+                  >
+                    Weiter
+                  </Button>
+                </div>
+              </>
+            )}
           </StepShell>
         )}
 
         {step === 'instrument' && melody && (
           <StepShell
-            title="Welcher Klang gefällt dir?"
-            lead="Klick dich durch — der Beat läuft weiter und wechselt sofort das Instrument. Mit Meine Melodie hörst du deine eigene Aufnahme darauf."
+            title="Welcher Klang für deine Melodie?"
+            lead="Der ganze Song läuft weiter — klick dich durch, das Instrument wechselt sofort."
           >
             <div className="grid w-full grid-cols-2 gap-2 sm:grid-cols-4">
-              {styleInstruments(styleId).map((id) => {
-                const spec = preset(id)
-                return (
-                  <button
-                    key={id}
-                    type="button"
-                    onClick={() => applyInstrument(id)}
-                    className={clsx(
-                      'rounded-xl border px-2.5 py-2.5 text-left transition-colors',
-                      melody.instrument === id
-                        ? 'border-accent bg-accent/15'
-                        : 'border-ink-700 bg-ink-850 hover:border-ink-500',
-                    )}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-lg">{spec.emoji}</span>
-                      {spec.voice === 'sampler' && (
-                        <span className="rounded bg-mint/15 px-1 py-0.5 text-[9px] text-mint">echt</span>
+              {styleInstruments(styleId)
+                .slice(0, 12)
+                .map((id) => {
+                  const spec = preset(id)
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => applyInstrument(id)}
+                      className={clsx(
+                        'rounded-xl border px-2.5 py-2.5 text-left transition-colors',
+                        melody.instrument === id
+                          ? 'border-accent bg-accent/15'
+                          : 'border-ink-700 bg-ink-850 hover:border-ink-500',
                       )}
-                    </div>
-                    <div className="mt-1 text-[11px] font-semibold text-ink-100">{spec.label}</div>
-                    <div className="mt-0.5 line-clamp-2 text-[10px] leading-tight text-ink-400">
-                      {spec.hint}
-                    </div>
-                  </button>
-                )
-              })}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-lg">{spec.emoji}</span>
+                        {spec.voice === 'sampler' && (
+                          <span className="rounded bg-mint/15 px-1 py-0.5 text-[9px] text-mint">
+                            echt
+                          </span>
+                        )}
+                      </div>
+                      <div className="mt-1 text-[11px] font-semibold text-ink-100">{spec.label}</div>
+                      <div className="mt-0.5 line-clamp-2 text-[10px] leading-tight text-ink-400">
+                        {spec.hint}
+                      </div>
+                    </button>
+                  )
+                })}
             </div>
 
             <button
@@ -485,13 +599,14 @@ export function NewSongFlow({
             </button>
 
             <div className="flex flex-wrap justify-center gap-2">
-              <Button size="lg" onClick={() => (demoOn ? stopDemo() : void playDemo(styleId, melody.instrument))}>
-                {demoOn ? '⏸ Beispiel stoppen' : '▶ Beispiel'}
+              <Button size="lg" onClick={() => (store.isPlaying ? stopAll() : playAll())}>
+                {store.isPlaying ? '⏸ Stopp' : '▶ Anhören'}
               </Button>
-              <Button size="lg" onClick={() => (store.isPlaying ? engine().stop() : playMelody())}>
-                {store.isPlaying ? '⏸ Stopp' : '▶ Meine Melodie'}
-              </Button>
-              <Button variant="accent" size="lg" onClick={() => setStep('beat')}>
+              <Button
+                variant="accent"
+                size="lg"
+                onClick={() => (mode === 'beatFirst' ? finish() : setStep('beat'))}
+              >
                 Weiter
               </Button>
             </div>
@@ -511,9 +626,9 @@ export function NewSongFlow({
 
         {step === 'beat' && (
           <StepShell
-            title="Magst du einen Beat dazu?"
+            title="Magst du einen eigenen Beat dazu?"
             lead={
-              'Mach einfach "Bum – Tss – Bum – Tss" ins Mikrofon. Deine Melodie läuft dabei mit, du kannst dich also daran orientieren.'
+              'Mach einfach "Bum – Tss – Bum – Tss" ins Mikrofon. Der Song läuft dabei mit, du kannst dich also daran orientieren.'
             }
           >
             <RecordCircle
@@ -521,19 +636,14 @@ export function NewSongFlow({
               counter={counter}
               label="Beat einsprechen"
               onStart={() => {
-                stopDemo()
-                void recordBeat()
+                stopAll()
+                void captureBeat()
               }}
               onStop={() => engine().cancelRecord()}
             />
-            {beatId && (
-              <p className="rounded-lg border border-mint/40 bg-mint/10 px-3 py-2 text-[11px] text-mint">
-                ✓ Beat liegt drauf — hörst du gerade.
-              </p>
-            )}
             {!busyRecording && (
               <Button variant="accent" size="lg" onClick={finish}>
-                {beatId ? 'Fertig — ins Studio' : 'Ohne Beat weiter'}
+                Fertig — ins Studio
               </Button>
             )}
           </StepShell>
@@ -595,9 +705,7 @@ function RecordCircle({
     return (
       <div className="flex h-40 w-40 flex-col items-center justify-center rounded-full border-2 border-amber-400 bg-amber-400/10">
         <span className="font-mono text-6xl font-bold text-amber-300 tabular-nums">{counter}</span>
-        <span className="mt-1 text-[10px] uppercase tracking-[0.2em] text-amber-300/80">
-          gleich
-        </span>
+        <span className="mt-1 text-[10px] tracking-[0.2em] text-amber-300/80 uppercase">gleich</span>
       </div>
     )
   }

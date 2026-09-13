@@ -2,11 +2,12 @@
 
 import * as Tone from 'tone'
 import { createInstrument, prepareInstrument, type Instrument } from './instruments'
+import { loadDrumKit } from './samples'
 import { MicRecorder, nativeContext, type MicMode } from './recorder'
 import { renderCorrectedVocal } from './autotune'
 import type { Clip, DrumVoice, Loop } from '../types'
 import type { StyleDemo } from './demos'
-import { uid } from '../music'
+import { dedupeNotes, uid } from '../music'
 
 /** Beats → Tone's bars:beats:sixteenths, so scheduling survives tempo changes. */
 export function beatsToBBS(beats: number): string {
@@ -105,7 +106,7 @@ class SummusEngine {
     }
 
     this.limiter = new Tone.Limiter(-1).toDestination()
-    this.master = new Tone.Volume(-3).connect(this.limiter)
+    this.master = new Tone.Volume(-7).connect(this.limiter)
 
     this.click = new Tone.MembraneSynth({
       pitchDecay: 0.008,
@@ -128,9 +129,12 @@ class SummusEngine {
     if (this.started) this.transport.bpm.value = bpm
   }
 
-  /** Pull down every recorded instrument a set of lanes needs. */
+  /** Pull down every recorded instrument a set of lanes needs, kit included. */
   async prepare(loops: Loop[]): Promise<void> {
-    await Promise.all([...new Set(loops.map((l) => l.instrument))].map(prepareInstrument))
+    await Promise.all([
+      loadDrumKit(),
+      ...[...new Set(loops.map((l) => l.instrument))].map(prepareInstrument),
+    ])
   }
 
   /** Create, reuse or drop instrument instances so they mirror the loop list. */
@@ -188,7 +192,7 @@ class SummusEngine {
       instrument.output.connect(this.master)
       this.auditions.set(id, instrument)
     }
-    instrument.trigger(midi, durationSec, time, velocity)
+    instrument.trigger(midi, durationSec, Math.max(Tone.now(), time), velocity)
   }
 
   private clearSchedule(): void {
@@ -222,7 +226,7 @@ class SummusEngine {
       for (let r = 0; r < repeats; r++) {
         const at = beatsToBBS((startBar + r * loop.bars) * 4)
         this.transport.schedule((time) => {
-          player.start(time)
+          player.start(Math.max(0, time))
         }, at)
       }
       return
@@ -230,10 +234,10 @@ class SummusEngine {
 
     if (!instrument || !loop.notes.length) return
 
-    const events = loop.notes.map((note) => ({ time: beatsToBBS(note.start), note }))
+    const events = dedupeNotes(loop.notes).map((note) => ({ time: beatsToBBS(note.start), note }))
     const part = new Tone.Part((time, event) => {
       const note = (event as { note: Loop['notes'][number] }).note
-      const seconds = (note.duration * 60) / this.transport.bpm.value
+      const seconds = Math.max(0.03, (note.duration * 60) / this.transport.bpm.value)
       if (loop.kind === 'drum' || instrument.isDrum) {
         instrument.triggerDrum(note.drum ?? 'kick', time, note.velocity)
       } else {
@@ -483,7 +487,7 @@ class SummusEngine {
 
     if (request.countInBars > 0 && this.click && this.clickHi) {
       for (let i = 0; i < countInBeats; i++) {
-        const at = startAt + i * beatDur
+        const at = Math.max(Tone.now(), startAt + i * beatDur)
         if (i % 4 === 0) this.click.triggerAttackRelease('C3', 0.06, at, 1)
         else this.clickHi.triggerAttackRelease('C4', 0.04, at, 0.6)
       }
@@ -513,7 +517,7 @@ class SummusEngine {
     }
 
     this.recorder.start()
-    this.transport.start(transportStart)
+    this.transport.start(Math.max(Tone.now() + 0.02, transportStart))
 
     await new Promise<void>((resolve) => {
       this.recordTimer = window.setTimeout(() => resolve(), (transportStart - Tone.now() + takeSeconds) * 1000 + 120)

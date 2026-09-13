@@ -117,6 +117,24 @@ export const LOOP_COLORS = [
   '#f97316',
 ]
 
+/**
+ * Two notes of the same pitch starting at the same instant are not a chord —
+ * they are a duplicate, and a synth voice cannot be attacked twice at one time.
+ */
+export function dedupeNotes<T extends { start: number; pitch: number; drum?: string }>(
+  notes: T[],
+): T[] {
+  const seen = new Set<string>()
+  const out: T[] = []
+  for (const note of [...notes].sort((a, b) => a.start - b.start)) {
+    const key = `${note.drum ?? Math.round(note.pitch)}@${note.start.toFixed(4)}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push(note)
+  }
+  return out
+}
+
 let idCounter = 0
 export function uid(prefix = 'id'): string {
   idCounter += 1

@@ -2,7 +2,9 @@
 
 import * as Tone from 'tone'
 import { createInstrument, prepareInstrument } from './instruments'
+import { loadDrumKit } from './samples'
 import { engine } from './engine'
+import { dedupeNotes } from '../music'
 import type { Clip, Loop } from '../types'
 
 export interface RenderOptions {
@@ -26,7 +28,9 @@ export async function renderSong(
   const { bpm, bars, sampleRate = 44100, tail = 2.5 } = options
   // Offline rendering cannot wait on the network, so every recording the song
   // uses has to be in memory before we start.
-  await Promise.all([...new Set(loops.map((l) => l.instrument))].map(prepareInstrument))
+  await Promise.all([loadDrumKit(), ...new Set(loops.map((l) => l.instrument))].map((job) =>
+    typeof job === 'string' ? prepareInstrument(job) : job,
+  ))
   const beatSeconds = 60 / bpm
   const duration = Math.max(1, bars * 4 * beatSeconds + tail)
   const anySolo = loops.some((l) => l.solo)
@@ -34,7 +38,7 @@ export async function renderSong(
   const rendered = await Tone.Offline(
     async () => {
       const limiter = new Tone.Limiter(-1).toDestination()
-      const master = new Tone.Volume(-3).connect(limiter)
+      const master = new Tone.Volume(-7).connect(limiter)
 
       for (const clip of clips) {
         const loop = loops.find((l) => l.id === clip.loopId)
@@ -62,9 +66,10 @@ export async function renderSong(
         instrument.output.connect(master)
         instrument.output.volume.value = loop.volume
 
+        const notes = dedupeNotes(loop.notes)
         for (let r = 0; r < Math.max(1, clip.repeats); r++) {
           const barOffset = (clip.startBar + r * loop.bars) * 4
-          for (const note of loop.notes) {
+          for (const note of notes) {
             const at = (barOffset + note.start) * beatSeconds
             if (at >= duration) continue
             if (loop.kind === 'drum' || instrument.isDrum) {

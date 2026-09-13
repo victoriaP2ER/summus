@@ -2,7 +2,7 @@ import * as Tone from 'tone'
 import type { DrumVoice, InstrumentId } from '../types'
 import { midiToToneNote } from '../music'
 import { PRESETS, preset, type FxSpec, type Preset } from './presets'
-import { loadInstrumentSamples, sampleBuffers, samplesReady } from './samples'
+import { drumBuffer, loadDrumKit, loadInstrumentSamples, sampleBuffers, samplesReady } from './samples'
 
 export {
   PRESETS,
@@ -143,6 +143,8 @@ class MelodicInstrument implements Instrument {
   private synth: Voice
   private chain: Tone.ToneAudioNode[]
   private disposed = false
+  /** Last time each pitch was struck — a voice cannot be attacked twice at once. */
+  private lastAt = new Map<number, number>()
 
   constructor(readonly id: InstrumentId) {
     const spec = preset(id)
@@ -176,22 +178,47 @@ class MelodicInstrument implements Instrument {
     // Swapping a lane's instrument disposes this one, but events already on the
     // transport keep firing until the schedule is rebuilt a moment later.
     if (this.disposed) return
-    this.synth.triggerAttackRelease(
-      midiToToneNote(foldIntoRange(midi, this.id)),
-      Math.max(0.03, durationSec),
-      time,
-      Math.max(0.05, Math.min(1, velocity)),
-    )
+    // Times and durations arrive from arithmetic on floats; a value a hair
+    // below zero makes Tone throw rather than simply play.
+    const pitch = foldIntoRange(midi, this.id)
+    const at = this.slot(pitch, Math.max(0, time || 0))
+    try {
+      this.synth.triggerAttackRelease(
+        midiToToneNote(pitch),
+        Math.max(0.03, durationSec || 0),
+        at,
+        Math.max(0.05, Math.min(1, velocity || 0.8)),
+      )
+    } catch {
+      // Two schedules can briefly overlap while a lane is being rebuilt.
+      // Dropping one note is far better than tearing down playback.
+    }
+  }
+
+  /**
+   * Nudge a repeat of the same pitch a millisecond later. Tone's timeline
+   * rejects two events at one instant, and two identical notes at the same
+   * moment are inaudible as a chord anyway.
+   */
+  private slot(pitch: number, time: number): number {
+    const previous = this.lastAt.get(pitch)
+    const at = previous !== undefined && time <= previous ? previous + 0.001 : time
+    this.lastAt.set(pitch, at)
+    return at
   }
 
   attack(midi: number, time: number, velocity: number): void {
     if (this.disposed) return
-    this.synth.triggerAttack(midiToToneNote(foldIntoRange(midi, this.id)), time, velocity)
+    this.synth.triggerAttack(
+      midiToToneNote(foldIntoRange(midi, this.id)),
+      Math.max(0, time || 0),
+      Math.max(0.05, Math.min(1, velocity || 0.8)),
+    )
   }
 
   release(midi: number, time: number): void {
     if (this.disposed) return
-    this.synth.triggerRelease(midiToToneNote(foldIntoRange(midi, this.id)), time)
+    this.synth.triggerRelease(midiToToneNote(foldIntoRange(midi, this.id)), Math.max(0, time || 0))
   }
 
   triggerDrum(): void {
@@ -216,6 +243,8 @@ class DrumKit implements Instrument {
   readonly isDrum = true
   output: Tone.Volume
   private disposed = false
+  /** Hi-hat and open hat share one metal synth, so their times must not collide. */
+  private lastAt = new Map<string, number>()
   private kick: Tone.MembraneSynth
   private tom: Tone.MembraneSynth
   private snare: Tone.NoiseSynth
@@ -281,33 +310,64 @@ class DrumKit implements Instrument {
     }).connect(rimBus)
 
     this.nodes = [snareBus, clapBus, hatBus, rimBus]
+
+    // Real one-shots replace the synthesised kit as soon as they arrive.
+    void loadDrumKit()
+  }
+
+  /**
+   * A fresh buffer source per hit. Recorded drums overlap the way real ones do,
+   * and a new source each time cannot collide with the previous one's timeline.
+   */
+  private playSample(voice: DrumVoice, at: number, velocity: number): boolean {
+    const buffer = drumBuffer(voice)
+    if (!buffer) return false
+    const source = new Tone.ToneBufferSource(buffer).connect(this.output)
+    source.onended = () => source.dispose()
+    source.start(at, 0, undefined, velocity)
+    return true
   }
 
   triggerDrum(voice: DrumVoice, time: number, velocity: number): void {
     if (this.disposed) return
-    const v = Math.max(0.08, Math.min(1, velocity))
+    // Each of these shares a monophonic synth, so they share a slot.
+    const bus = voice === 'openhat' ? 'hat' : voice
+    const wanted = Math.max(0, time || 0)
+    const previous = this.lastAt.get(bus)
+    const at = previous !== undefined && wanted <= previous ? previous + 0.001 : wanted
+    this.lastAt.set(bus, at)
+    const v = Math.max(0.08, Math.min(1, velocity || 0.8))
+    try {
+      this.strike(voice, at, v)
+    } catch {
+      // A dropped hit beats a thrown error mid-song.
+    }
+  }
+
+  private strike(voice: DrumVoice, at: number, v: number): void {
+    if (this.playSample(voice, at, v)) return
     switch (voice) {
       case 'kick':
-        this.kick.triggerAttackRelease('C1', 0.5, time, v)
+        this.kick.triggerAttackRelease('C1', 0.5, at, v)
         break
       case 'tom':
-        this.tom.triggerAttackRelease('G1', 0.35, time, v)
+        this.tom.triggerAttackRelease('G1', 0.35, at, v)
         break
       case 'snare':
-        this.snare.triggerAttackRelease(0.16, time, v)
-        this.snareTone.triggerAttackRelease('D3', 0.1, time, v * 0.7)
+        this.snare.triggerAttackRelease(0.16, at, v)
+        this.snareTone.triggerAttackRelease('D3', 0.1, at, v * 0.7)
         break
       case 'clap':
-        this.clap.triggerAttackRelease(0.2, time, v)
+        this.clap.triggerAttackRelease(0.2, at, v)
         break
       case 'hat':
-        this.hat.triggerAttackRelease(0.04, time, v * 0.9)
+        this.hat.triggerAttackRelease(0.04, at, v * 0.9)
         break
       case 'openhat':
-        this.hat.triggerAttackRelease(0.3, time, v * 0.8)
+        this.hat.triggerAttackRelease(0.3, at, v * 0.8)
         break
       case 'rim':
-        this.rim.triggerAttackRelease(0.03, time, v)
+        this.rim.triggerAttackRelease(0.03, at, v)
         break
     }
   }
