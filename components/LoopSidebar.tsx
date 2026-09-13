@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { clsx } from './clsx'
 import { Button, Field, Select, Slider } from './ui'
+import { InstrumentPicker } from './InstrumentPicker'
 import { INSTRUMENTS, instrumentMeta } from '@/lib/audio/instruments'
 import { engine } from '@/lib/audio/engine'
 import { LOOP_COLORS, midiToName } from '@/lib/music'
@@ -19,22 +20,30 @@ export function LoopSidebar() {
   const selectedLoopId = useStore((s) => s.selectedLoopId)
   const selectLoop = useStore((s) => s.selectLoop)
   const addLoop = useStore((s) => s.addLoop)
+  const updateLoop = useStore((s) => s.updateLoop)
+  const [addingId, setAddingId] = useState<string | null>(null)
+
+  /** Adding a spur starts with picking its sound — that is the decision. */
+  const addWithInstrument = () => {
+    const loop = addLoop({ name: `Spur ${loops.length + 1}`, bars: loops[0]?.bars ?? 4 })
+    setAddingId(loop.id)
+  }
 
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex items-center justify-between border-b border-ink-700 px-3 py-2">
-        <h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-300">Lanes</h2>
-        <Button size="sm" onClick={() => addLoop()}>
-          + Lane
+        <h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-300">Spuren</h2>
+        <Button size="sm" onClick={addWithInstrument} title="Leere Spur mit eigenem Instrument anlegen">
+          + Instrument
         </Button>
       </div>
 
       <div className="scroll-thin min-h-0 flex-1 overflow-y-auto">
         {loops.length === 0 && (
           <p className="px-3 py-6 text-center text-[11px] leading-relaxed text-ink-400">
-            Noch keine Lane.
+            Noch keine Spur.
             <br />
-            Summe etwas ein oder leg eine leere Lane an.
+            Summe etwas ein oder leg eine leere Spur an.
           </p>
         )}
         {loops.map((loop) => (
@@ -46,6 +55,20 @@ export function LoopSidebar() {
           />
         ))}
       </div>
+
+      {addingId && (
+        <InstrumentPicker
+          value={loops.find((l) => l.id === addingId)?.instrument ?? 'piano'}
+          onChange={(instrument) =>
+            updateLoop(addingId, {
+              instrument,
+              kind: instrument === 'drums' ? 'drum' : 'melodic',
+              name: instrumentMeta(instrument).label,
+            })
+          }
+          onClose={() => setAddingId(null)}
+        />
+      )}
     </div>
   )
 }

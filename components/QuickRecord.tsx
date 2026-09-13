@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { clsx } from './clsx'
 import { Button } from './ui'
 import { Meter } from './ui'
@@ -18,6 +18,8 @@ const MODES: { id: CaptureMode; label: string; emoji: string; hint: string }[] =
   { id: 'vocal', label: 'Singen', emoji: '🎤', hint: 'mit Autotune auf den Takt' },
 ]
 
+const HINT_KEY = 'summus.secondLaneHint'
+
 /**
  * Always-present record button. Recording is the main verb of this app, so it
  * should never be more than one click away, whatever else is on screen.
@@ -25,7 +27,16 @@ const MODES: { id: CaptureMode; label: string; emoji: string; hint: string }[] =
 export function QuickRecord({ styleId }: { styleId: string }) {
   const [open, setOpen] = useState(false)
   const [mode, setMode] = useState<CaptureMode>('hum')
+  const [hintDismissed, setHintDismissed] = useState(true)
   const fileRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    try {
+      setHintDismissed(localStorage.getItem(HINT_KEY) === 'done')
+    } catch {
+      setHintDismissed(false)
+    }
+  }, [])
   const { state, counter, error, result, capture, importTake, stop, clear } = useCapture()
   const store = useStore()
   const { level } = useMicLevel(state !== 'idle')
@@ -80,8 +91,36 @@ export function QuickRecord({ styleId }: { styleId: string }) {
         </p>
       )}
 
+      {/* After the first lane exists, the next question is always "how do I add
+          another one" — so point at the answer, once. */}
+      {!open && !busy && !result && !hintDismissed && store.loops.length >= 1 && (
+        <div className="pointer-events-auto max-w-[15rem] rounded-xl border border-accent/40 bg-ink-900 p-3 shadow-2xl">
+          <p className="text-[11px] leading-relaxed text-ink-200">
+            Noch ein Instrument? Hier drunter nimmst du eine <strong>zweite Spur</strong> auf — das
+            Vorhandene läuft dabei mit.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              setHintDismissed(true)
+              try {
+                localStorage.setItem(HINT_KEY, 'done')
+              } catch {
+                /* private mode — the hint just comes back next time */
+              }
+            }}
+            className="mt-1.5 text-[10px] text-ink-400 underline-offset-2 hover:text-ink-200 hover:underline"
+          >
+            Verstanden
+          </button>
+        </div>
+      )}
+
       {open && !busy && (
         <div className="pointer-events-auto w-60 space-y-1.5 rounded-xl border border-ink-700 bg-ink-900 p-2 shadow-2xl">
+          <p className="px-1 pb-0.5 text-[10px] font-semibold tracking-[0.12em] text-ink-400 uppercase">
+            Neue Spur aufnehmen
+          </p>
           {MODES.map((m) => (
             <button
               key={m.id}
@@ -180,7 +219,7 @@ export function QuickRecord({ styleId }: { styleId: string }) {
         ) : (
           <>
             <span className="h-3.5 w-3.5 rounded-full bg-rose-500" />
-            <span className="text-sm">{open ? 'Schließen' : 'Aufnehmen'}</span>
+            <span className="text-sm">{open ? 'Schließen' : '+ Spur aufnehmen'}</span>
           </>
         )}
       </button>
