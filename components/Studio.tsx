@@ -15,6 +15,7 @@ import { VocalEditor } from './VocalEditor'
 import { engine } from '@/lib/audio/engine'
 import { buildAccompaniment } from '@/lib/audio/accompany'
 import { grooves, grooveToLoops } from '@/lib/audio/grooves'
+import { installMediaKeys, setMediaPlaying } from '@/lib/audio/mediaKeys'
 import { STYLES, style as findStyle } from '@/lib/audio/styles'
 import { collectAudioAsync, saveSong } from '@/lib/library'
 import { uid } from '@/lib/music'
@@ -109,6 +110,30 @@ export function Studio({ startGuided = false }: { startGuided?: boolean }) {
     return () => window.clearTimeout(timer)
   }, [loops, clips, bpm, store.name, store.scaleId, store.scaleRoot, save])
 
+  const resume = useCallback(() => {
+    const state = useStore.getState()
+    if (state.isRecording || !state.loops.length) return
+    void (async () => {
+      await engine().start()
+      await engine().prepare(state.loops)
+      engine().setBpm(state.bpm)
+      engine().metronomeEnabled = state.metronome
+      const active = selectedLoop(state)
+      const from = state.playhead
+      if (state.playMode === 'loop' && active) engine().playLoop(active, state.loops, from)
+      else engine().playSong(state.loops, state.clips, state.songBars(), from)
+      state.patch({ isPlaying: true, audioReady: true })
+    })()
+  }, [])
+
+  const halt = useCallback(() => {
+    const state = useStore.getState()
+    if (!state.isPlaying) return
+    const at = engine().position()
+    engine().pause()
+    state.patch({ isPlaying: false, playhead: at })
+  }, [])
+
   // Space bar starts and stops, like every other music app.
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -116,29 +141,29 @@ export function Studio({ startGuided = false }: { startGuided?: boolean }) {
       if (target.tagName === 'INPUT' || target.tagName === 'SELECT' || target.isContentEditable) return
       if (event.code !== 'Space') return
       event.preventDefault()
-      const state = useStore.getState()
-      if (state.isRecording || !state.loops.length) return
-      if (state.isPlaying) {
-        const at = engine().position()
-        engine().pause()
-        state.patch({ isPlaying: false, playhead: at })
-        return
-      }
-      void (async () => {
-        await engine().start()
-        await engine().prepare(state.loops)
-        engine().setBpm(state.bpm)
-        engine().metronomeEnabled = state.metronome
-        const active = selectedLoop(state)
-        const from = state.playhead
-        if (state.playMode === 'loop' && active) engine().playLoop(active, state.loops, from)
-        else engine().playSong(state.loops, state.clips, state.songBars(), from)
-        state.patch({ isPlaying: true, audioReady: true })
-      })()
+      if (useStore.getState().isPlaying) halt()
+      else resume()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [])
+  }, [halt, resume])
+
+  // The play/pause key on a Mac keyboard, and the media controls elsewhere.
+  useEffect(() => {
+    return installMediaKeys({
+      title: useStore.getState().name,
+      onPlay: resume,
+      onPause: halt,
+      onStop: () => {
+        engine().stop()
+        useStore.getState().patch({ isPlaying: false, playhead: 0 })
+      },
+    })
+  }, [halt, resume])
+
+  useEffect(() => {
+    setMediaPlaying(isPlaying)
+  }, [isPlaying])
 
   const hasLanes = loops.length > 0
   const showArrangement = loops.length > 1 || advanced
@@ -164,7 +189,14 @@ export function Studio({ startGuided = false }: { startGuided?: boolean }) {
     const state = useStore.getState()
     const lane = state.loops.find((l) => l.kind === 'melodic' && l.notes.length > 2)
     if (!lane) return
-    const band = buildAccompaniment(lane, styleId, state.scaleId, state.loops.length)
+    const band = buildAccompaniment(
+      lane,
+      styleId,
+      state.scaleId,
+      state.loops.length,
+      'basis',
+      Math.floor(Math.random() * 3),
+    )
     if (!band.length) return
     state.addLoops(band)
     playAll()
@@ -175,7 +207,8 @@ export function Studio({ startGuided = false }: { startGuided?: boolean }) {
       const state = useStore.getState()
       state.patch({ bpm: findStyle(style).bpm, scaleId: findStyle(style).scaleId })
       setStyleId(style)
-      state.addLoops(grooveToLoops(style, grooveId, 4, 60, Date.now() % 100000))
+      const roll = Math.floor(Math.random() * 3)
+      state.addLoops(grooveToLoops(style, grooveId, 4, 60, Date.now() % 100000, roll))
       playAll()
     },
     [playAll],

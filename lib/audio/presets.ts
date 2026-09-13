@@ -14,12 +14,21 @@ export type Family =
 export type VoiceKind = 'synth' | 'fm' | 'am' | 'mono' | 'drums' | 'sampler'
 
 export type FxSpec =
-  | { type: 'filter'; frequency: number; kind?: BiquadFilterType; rolloff?: -12 | -24 | -48; Q?: number }
+  | {
+      type: 'filter'
+      frequency: number
+      kind?: BiquadFilterType
+      rolloff?: -12 | -24 | -48
+      Q?: number
+      /** Only for peaking and shelf filters, in dB */
+      gain?: number
+    }
   | { type: 'vibrato'; frequency: number; depth: number }
   | { type: 'chorus'; frequency: number; delayTime: number; depth: number; wet: number }
   | { type: 'reverb'; roomSize: number; dampening?: number; wet: number }
   | { type: 'delay'; delayTime: string; feedback: number; wet: number }
-  | { type: 'distortion'; amount: number; wet: number }
+  | { type: 'distortion'; amount: number; wet: number; oversample?: '2x' | '4x' | 'none' }
+  | { type: 'gain'; db: number }
   | { type: 'tremolo'; frequency: number; depth: number; wet: number }
   | { type: 'bitcrush'; bits: number; wet: number }
 
@@ -249,20 +258,42 @@ export const PRESETS: Preset[] = [
     fx: [room(0.55, 0.2)],
     release: 1,
   }),
-  real('guitarClean', 'E-Gitarre', 'Zupfinstrumente', 'Elektrisch und klar, mit etwas Federhall', '🎸', 'guitar-electric', 40, 86, {
-    tags: ['gitarre', 'clean', 'surf', 'indie'],
-    fx: [{ type: 'tremolo', frequency: 4.5, depth: 0.3, wet: 0.3 }, room(0.68, 0.3)],
+  real('guitarClean', 'E-Gitarre clean', 'Zupfinstrumente', 'Echte E-Gitarre, klar und mit Federhall', '🎸', 'guitarTwang', 40, 86, {
+    tags: ['gitarre', 'clean', 'surf', 'indie', 'e-gitarre'],
+    fx: [
+      { type: 'filter', frequency: 90, kind: 'highpass', rolloff: -12 },
+      { type: 'tremolo', frequency: 4.5, depth: 0.28, wet: 0.28 },
+      room(0.66, 0.28),
+    ],
     release: 1,
   }),
-  real('guitarDist', 'E-Gitarre verzerrt', 'Zupfinstrumente', 'Dreckig und laut — Punk, Rock, alles was kracht', '🤘', 'guitar-electric', 38, 84, {
-    tags: ['gitarre', 'distortion', 'punk', 'rock', 'metal'],
+  real('guitarCrunch', 'E-Gitarre angezerrt', 'Zupfinstrumente', 'Angeblasener Amp — Rock-Leads und Riffs', '🎸', 'guitarTwang', 40, 86, {
+    tags: ['gitarre', 'rock', 'overdrive', 'lead', 'e-gitarre'],
     fx: [
-      { type: 'distortion', amount: 0.72, wet: 1 },
-      { type: 'filter', frequency: 3400, rolloff: -24 },
-      room(0.45, 0.14),
+      { type: 'gain', db: 10 },
+      { type: 'filter', frequency: 110, kind: 'highpass', rolloff: -12 },
+      { type: 'distortion', amount: 0.7, wet: 1, oversample: '4x' },
+      { type: 'filter', frequency: 1300, kind: 'peaking', Q: 0.8, gain: 6 },
+      { type: 'filter', frequency: 5000, rolloff: -24 },
+      room(0.5, 0.16),
     ],
-    gain: -12,
-    release: 0.6,
+    gain: -15,
+    release: 0.8,
+  }),
+  real('guitarDist', 'E-Gitarre verzerrt', 'Zupfinstrumente', 'Abgedämpfte Powerchords — Punk, Rock, alles was kracht', '🤘', 'guitarStac', 38, 84, {
+    tags: ['gitarre', 'distortion', 'punk', 'rock', 'metal', 'powerchord'],
+    // Staccato picking through a cranked amp: cut the mud, push the mids that
+    // make a riff cut, then roll the top off the way a speaker cabinet does.
+    fx: [
+      { type: 'gain', db: 13 },
+      { type: 'filter', frequency: 105, kind: 'highpass', rolloff: -12 },
+      { type: 'distortion', amount: 0.88, wet: 1, oversample: '4x' },
+      { type: 'filter', frequency: 1150, kind: 'peaking', Q: 0.9, gain: 7 },
+      { type: 'filter', frequency: 4400, rolloff: -24 },
+      room(0.38, 0.1),
+    ],
+    gain: -17,
+    release: 0.35,
   }),
   real('concertharp', 'Konzertharfe', 'Zupfinstrumente', 'Große Harfe, perlend und weit', '🪕', 'concertharp', 28, 100, {
     tags: ['harfe', 'orchester', 'engel', 'glissando'],

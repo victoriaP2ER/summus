@@ -1,7 +1,7 @@
 /** Preset id — see INSTRUMENTS in lib/audio/instruments.ts for the full list. */
 export type InstrumentId = string
 
-export type DrumVoice = 'kick' | 'snare' | 'clap' | 'hat' | 'openhat' | 'tom' | 'rim'
+export type DrumVoice = 'kick' | 'snare' | 'clap' | 'hat' | 'openhat' | 'tom' | 'rim' | 'crash'
 
 export type LoopKind = 'melodic' | 'drum' | 'vocal'
 

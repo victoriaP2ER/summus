@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { clsx } from './clsx'
 import { Button, Meter } from './ui'
 import { Logo } from './Logo'
@@ -10,7 +10,7 @@ import { useMicLevel } from './useMicLevel'
 import { engine } from '@/lib/audio/engine'
 import { preset, prepareInstrument } from '@/lib/audio/instruments'
 import { micErrorMessage } from '@/lib/audio/recorder'
-import { STYLES, style as findStyle, styleInstruments } from '@/lib/audio/styles'
+import { STYLES, style as findStyle, styleInstruments, styleSet } from '@/lib/audio/styles'
 import { grooves, grooveToLoops } from '@/lib/audio/grooves'
 import { buildAccompaniment } from '@/lib/audio/accompany'
 import { takeToDrumNotes, takeToNotes } from '@/lib/audio/convert'
@@ -50,7 +50,9 @@ export function NewSongFlow({
   const [melodyId, setMelodyId] = useState<string | null>(null)
   const [bandIds, setBandIds] = useState<string[]>([])
   const [grooveId, setGrooveId] = useState('basis')
-  const [seed, setSeed] = useState(1)
+  // A ref, not state: the click handler must see the value the previous click
+  // wrote, not the one captured when the component last rendered.
+  const variation = useRef(0)
   const [picking, setPicking] = useState(false)
 
   const store = useStore()
@@ -231,10 +233,19 @@ export function NewSongFlow({
    * notes and gets a bass, chords and drums built around the harmony it
    * implies — or, when the beat comes first, a ready-made groove to sing over.
    */
-  const applyStyle = (id: string, feel = grooveId) => {
+  const applyStyle = (id: string, feel?: string) => {
+    // Clicking the same direction again asks for a different take on it. Groove
+    // and line-up advance at different rates, so the combinations do not simply
+    // repeat every third click, and the melody is re-written every time.
+    const list = grooves(id)
+    const next = id === styleId && bandIds.length ? variation.current + 1 : 0
+    variation.current = next
+    const nextFeel = feel ?? list[next % list.length]?.id ?? 'basis'
+    const setIndex = Math.floor(next / list.length)
+
     onStyleChange(id)
-    setGrooveId(feel)
-    const chosen = findStyle(id)
+    setGrooveId(nextFeel)
+    const chosen = { ...findStyle(id), ...styleSet(id, setIndex) }
     stopAll()
 
     const state = useStore.getState()
@@ -247,9 +258,7 @@ export function NewSongFlow({
       const fresh = useStore.getState()
       for (const l of fresh.loops) fresh.removeLoop(l.id)
       // A new seed each time, so clicking around never gives the same tune twice.
-      const nextSeed = seed + 1
-      setSeed(nextSeed)
-      const groove = grooveToLoops(id, feel, 4, 60, nextSeed)
+      const groove = grooveToLoops(id, nextFeel, 4, 60, next + 1, setIndex)
       useStore.getState().addLoops(groove)
       setBandIds(groove.map((l) => l.id))
       playAll()
@@ -261,7 +270,14 @@ export function NewSongFlow({
     const lane = current.loops.find((l) => l.id === melodyId)
     if (!lane) return
     current.updateLoop(lane.id, { instrument: chosen.lead })
-    const band = buildAccompaniment({ ...lane, instrument: chosen.lead }, id, chosen.scaleId, 1)
+    const band = buildAccompaniment(
+      { ...lane, instrument: chosen.lead },
+      id,
+      chosen.scaleId,
+      1,
+      nextFeel,
+      setIndex,
+    )
     if (band.length) {
       useStore.getState().addLoops(band)
       setBandIds(band.map((l) => l.id))
@@ -533,11 +549,13 @@ export function NewSongFlow({
                   <Button size="lg" onClick={() => (store.isPlaying ? stopAll() : playAll())}>
                     {store.isPlaying ? '⏸ Stopp' : '▶ Anhören'}
                   </Button>
-                  {mode === 'beatFirst' && (
-                    <Button size="lg" onClick={() => applyStyle(styleId, grooveId)} title="Neue Melodie über denselben Groove">
-                      🎲 Andere Melodie
-                    </Button>
-                  )}
+                  <Button
+                    size="lg"
+                    onClick={() => applyStyle(styleId)}
+                    title="Andere Besetzung, anderer Groove, neue Melodie"
+                  >
+                    🎲 Andere Version
+                  </Button>
                   <Button
                     variant="accent"
                     size="lg"

@@ -1,7 +1,8 @@
-import { demoFor } from './demos'
-import { style as findStyle } from './styles'
+import { groove as findGroove } from './grooves'
+import { style as findStyle, styleSet } from './styles'
 import { barRoots } from './songsplit'
 import { dedupeNotes, LOOP_COLORS, uid } from '../music'
+import { humanize } from './humanize'
 import type { Loop, Note } from '../types'
 
 /** Minor-ish scales get minor chords under the melody. */
@@ -35,9 +36,13 @@ export function buildAccompaniment(
   styleId: string,
   scaleId: string,
   colourOffset = 1,
+  /** Which of the style's grooves to build the backing from */
+  grooveId = 'basis',
+  /** Which line-up to use — different sets make the same genre sound different */
+  setIndex = 0,
 ): Loop[] {
-  const style = findStyle(styleId)
-  const demo = demoFor(styleId)
+  const style = { ...findStyle(styleId), ...styleSet(styleId, setIndex) }
+  const { demo } = findGroove(styleId, grooveId)
   const bars = Math.max(1, melody.bars)
   const roots = barRoots(melody.notes, bars)
 
@@ -121,8 +126,15 @@ export function buildAccompaniment(
   })
 
   const loops: Loop[] = []
-  if (bassNotes.length) loops.push(make('Bass', style.bass, dedupeNotes(bassNotes), 'melodic', 0))
-  if (chordNotes.length) loops.push(make('Akkorde', style.chords, dedupeNotes(chordNotes), 'melodic', 1))
-  if (drumNotes.length) loops.push(make('Schlagzeug', 'drums', dedupeNotes(drumNotes), 'drum', 2))
+  const seed = setIndex * 31 + bars
+  if (bassNotes.length) {
+    loops.push(make('Bass', style.bass, humanize(dedupeNotes(bassNotes), styleId, 'bass', seed), 'melodic', 0))
+  }
+  if (chordNotes.length) {
+    loops.push(make('Akkorde', style.chords, humanize(dedupeNotes(chordNotes), styleId, 'chords', seed + 1), 'melodic', 1))
+  }
+  if (drumNotes.length) {
+    loops.push(make('Schlagzeug', 'drums', humanize(dedupeNotes(drumNotes), styleId, 'drums', seed + 2), 'drum', 2))
+  }
   return loops
 }

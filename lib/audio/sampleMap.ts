@@ -322,6 +322,26 @@ export const SAMPLE_MAP: Record<string, Record<string, string>> = {
     'F4': 'F4.mp3',
     'C#5': 'Cs5.mp3',
   },
+  'guitarTwang': {
+    'E2': 'E2.mp3',
+    'A2': 'A2.mp3',
+    'D3': 'D3.mp3',
+    'G3': 'G3.mp3',
+    'C4': 'C4.mp3',
+    'E4': 'E4.mp3',
+    'A4': 'A4.mp3',
+    'D5': 'D5.mp3',
+  },
+  'guitarStac': {
+    'E2': 'E2.mp3',
+    'A2': 'A2.mp3',
+    'D3': 'D3.mp3',
+    'G3': 'G3.mp3',
+    'C4': 'C4.mp3',
+    'E4': 'E4.mp3',
+    'A4': 'A4.mp3',
+    'D5': 'D5.mp3',
+  },
 }
 
 export type SampleFolder = keyof typeof SAMPLE_MAP

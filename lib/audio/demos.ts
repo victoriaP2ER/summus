@@ -105,6 +105,7 @@ export const DEMOS: Record<string, StyleDemo> = {
   punk: {
     bars: 2,
     drums: [
+      ...hits('crash', [0], 0.7),
       ...hits('kick', [0, 0.5, 2, 4, 4.5, 6]),
       ...hits('snare', [1, 3, 5, 7]),
       ...hits('hat', pulse(0, 8, 0.5), 0.5),
@@ -133,6 +134,7 @@ export const DEMOS: Record<string, StyleDemo> = {
   classicRock: {
     bars: 2,
     drums: [
+      ...hits('crash', [0], 0.7),
       ...hits('kick', [0, 2.5, 3, 4, 6.5]),
       ...hits('snare', [1, 3, 5, 7]),
       ...hits('hat', pulse(0, 8, 0.5), 0.45),
@@ -182,7 +184,9 @@ export const DEMOS: Record<string, StyleDemo> = {
 
   cinematic: {
     bars: 4,
-    drums: [...hits('kick', [0, 3, 4, 7, 8, 11, 12, 15], 0.8), ...hits('tom', [2, 6, 10, 14], 0.5)],
+    drums: [
+      ...hits('crash', [0, 8], 0.7),
+...hits('kick', [0, 3, 4, 7, 8, 11, 12, 15], 0.8), ...hits('tom', [2, 6, 10, 14], 0.5)],
     bass: [
       { step: -12, at: 0, len: 3.9, vel: 0.85 },
       { step: -12, at: 4, len: 3.9, vel: 0.85 },
@@ -330,6 +334,7 @@ export const DEMOS: Record<string, StyleDemo> = {
   jrpg: {
     bars: 4,
     drums: [
+      ...hits('crash', [0], 0.7),
       ...hits('kick', [0, 4, 8, 12], 0.6),
       ...hits('rim', [2, 6, 10, 14], 0.4),
       ...hits('hat', pulse(0, 16, 1), 0.25),
@@ -419,6 +424,7 @@ export const DEMOS: Record<string, StyleDemo> = {
   disco: {
     bars: 2,
     drums: [
+      ...hits('crash', [0], 0.7),
       ...hits('kick', pulse(0, 8, 1)),
       ...hits('clap', [1, 3, 5, 7], 0.8),
       ...hits('openhat', pulse(0.5, 8, 1), 0.55),

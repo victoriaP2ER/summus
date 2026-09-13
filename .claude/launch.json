@@ -3,13 +3,8 @@
   "configurations": [
     {
       "name": "summus",
-      "runtimeExecutable": "/usr/bin/env",
-      "runtimeArgs": [
-        "PATH=/Users/vici/.nvm/versions/node/v22.23.2/bin:/usr/local/bin:/usr/bin:/bin",
-        "npm",
-        "run",
-        "dev"
-      ],
+      "runtimeExecutable": "/bin/zsh",
+      "runtimeArgs": ["-ic", "npm run dev"],
       "port": 3000
     }
   ]

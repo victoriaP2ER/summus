@@ -60,45 +60,79 @@ export function generateLead(demo: StyleDemo, seed: number, options: MelodyOptio
   const random = rng(seed * 2654435761 + bars * 97)
   const scale = getScale(scaleId).steps
   const chords = barChords(demo)
-  const notes: DemoNote[] = []
 
-  // Start somewhere in the chord, near the requested register.
-  let degree = 0
+  // Vary the register and the busyness per seed, otherwise every tune sits in
+  // the same fifth and they all start to sound like the same idea.
+  const lift = [0, 5, 7, 12, -5][Math.floor(random() * 5)]
+  const centre = register + lift
+  const busyness = Math.max(0.15, Math.min(0.9, density + (random() - 0.5) * 0.5))
+  const low = centre - 9
+  const high = centre + 14
 
-  for (let bar = 0; bar < bars; bar++) {
-    const chord = chords[bar % chords.length]
-    const busy = CELLS.filter((c) => (density > 0.6 ? c.length >= 3 : density < 0.35 ? c.length <= 3 : true))
-    const cell = busy[Math.floor(random() * busy.length)] ?? CELLS[0]
+  const pickCell = (): number[] => {
+    const usable = CELLS.filter((c) =>
+      busyness > 0.62 ? c.length >= 3 : busyness < 0.33 ? c.length <= 3 : true,
+    )
+    return usable[Math.floor(random() * usable.length)] ?? CELLS[0]
+  }
 
+  /** One bar of notes over a given chord, following an optional rhythm. */
+  const writeBar = (bar: number, chord: number[], cell: number[], degreeIn: number) => {
+    const notes: DemoNote[] = []
+    let degree = degreeIn
     let at = bar * 4
+
     for (let i = 0; i < cell.length; i++) {
       const len = cell[i]
       const strong = i === 0 || at % 2 < 0.01
 
+      // A rest now and then is what makes a line breathe.
+      if (!strong && random() < 0.12) {
+        at += len
+        continue
+      }
+
       let step: number
       if (strong) {
-        // Land on the chord so the bar has a centre.
         step = chord[Math.floor(random() * chord.length)]
+        const pc = (((step % 12) + 12) % 12)
         degree = scale.reduce(
-          (best, s, index) => (Math.abs(s - (((step % 12) + 12) % 12)) < Math.abs(scale[best] - (((step % 12) + 12) % 12)) ? index : best),
+          (best, s, index) => (Math.abs(s - pc) < Math.abs(scale[best] - pc) ? index : best),
           0,
         )
       } else {
-        // Step through the scale, mostly by one degree.
-        const move = random() < 0.72 ? (random() < 0.5 ? 1 : -1) : random() < 0.5 ? 2 : -2
+        // Mostly steps, occasionally a leap — that mix is what reads as a tune.
+        const roll = random()
+        const move = roll < 0.6 ? (random() < 0.5 ? 1 : -1) : roll < 0.85 ? (random() < 0.5 ? 2 : -2) : random() < 0.5 ? 3 : -3
         degree += move
         const octave = Math.floor(degree / scale.length)
         const within = ((degree % scale.length) + scale.length) % scale.length
         step = scale[within] + octave * 12
       }
 
-      // Keep the line in a singable band around the target register.
-      while (step < register - 7) step += 12
-      while (step > register + 12) step -= 12
+      while (step < low) step += 12
+      while (step > high) step -= 12
 
-      notes.push({ step, at, len: Math.max(0.4, len * 0.92), vel: strong ? 0.8 : 0.65 })
+      notes.push({ step, at, len: Math.max(0.4, len * 0.92), vel: strong ? 0.82 : 0.64 })
       at += len
     }
+    return { notes, degree }
+  }
+
+  const notes: DemoNote[] = []
+  const cells: number[][] = []
+  let degree = 0
+
+  for (let bar = 0; bar < bars; bar++) {
+    const chord = chords[bar % chords.length]
+    // Echo an earlier bar's rhythm now and then, so the line has a shape
+    // instead of wandering. That is most of what makes a melody memorable.
+    const echo = bar >= 2 && random() < 0.45 ? cells[bar - 2] : null
+    const cell = echo ?? pickCell()
+    cells.push(cell)
+    const written = writeBar(bar, chord, cell, degree)
+    degree = written.degree
+    notes.push(...written.notes)
   }
 
   return notes

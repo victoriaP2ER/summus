@@ -2,7 +2,14 @@ import * as Tone from 'tone'
 import type { DrumVoice, InstrumentId } from '../types'
 import { midiToToneNote } from '../music'
 import { PRESETS, preset, type FxSpec, type Preset } from './presets'
-import { drumBuffer, loadDrumKit, loadInstrumentSamples, sampleBuffers, samplesReady } from './samples'
+import {
+  drumBuffer,
+  drumVariantCount,
+  loadDrumKit,
+  loadInstrumentSamples,
+  sampleBuffers,
+  samplesReady,
+} from './samples'
 
 export {
   PRESETS,
@@ -46,13 +53,18 @@ export function foldIntoRange(midi: number, id: InstrumentId): number {
 
 function buildFx(spec: FxSpec): Tone.ToneAudioNode {
   switch (spec.type) {
-    case 'filter':
-      return new Tone.Filter({
+    case 'filter': {
+      const filter = new Tone.Filter({
         frequency: spec.frequency,
         type: spec.kind ?? 'lowpass',
         rolloff: spec.rolloff ?? -12,
         Q: spec.Q ?? 1,
       })
+      if (spec.gain !== undefined) filter.gain.value = spec.gain
+      return filter
+    }
+    case 'gain':
+      return new Tone.Volume(spec.db)
     case 'vibrato':
       return new Tone.Vibrato({ frequency: spec.frequency, depth: spec.depth })
     case 'chorus':
@@ -75,7 +87,11 @@ function buildFx(spec: FxSpec): Tone.ToneAudioNode {
         wet: spec.wet,
       })
     case 'distortion':
-      return new Tone.Distortion({ distortion: spec.amount, wet: spec.wet })
+      return new Tone.Distortion({
+        distortion: spec.amount,
+        wet: spec.wet,
+        oversample: spec.oversample ?? '2x',
+      })
     case 'tremolo':
       return new Tone.Tremolo({ frequency: spec.frequency, depth: spec.depth, wet: spec.wet }).start()
     case 'bitcrush': {
@@ -320,11 +336,19 @@ class DrumKit implements Instrument {
    * and a new source each time cannot collide with the previous one's timeline.
    */
   private playSample(voice: DrumVoice, at: number, velocity: number): boolean {
-    const buffer = drumBuffer(voice)
+    // Step through the round robins by hit time, so the same bar renders the
+    // same way offline as it sounded live.
+    const variants = drumVariantCount(voice)
+    const pick = variants > 1 ? Math.floor(at * 1000) % variants : 0
+    const buffer = drumBuffer(voice, pick)
     if (!buffer) return false
     const source = new Tone.ToneBufferSource(buffer).connect(this.output)
+    // No two strokes of a real drum are identical. A little tuning and level
+    // movement per hit is what stops a programmed beat sounding mechanical.
+    const wobble = Math.sin(at * 137.51) * 0.5 + Math.sin(at * 61.7) * 0.5
+    source.playbackRate.value = 1 + wobble * 0.022
     source.onended = () => source.dispose()
-    source.start(at, 0, undefined, velocity)
+    source.start(at, 0, undefined, Math.max(0.05, velocity * (1 + wobble * 0.09)))
     return true
   }
 
@@ -369,6 +393,10 @@ class DrumKit implements Instrument {
       case 'rim':
         this.rim.triggerAttackRelease(0.03, at, v)
         break
+      case 'crash':
+        // Only reached before the recordings land.
+        this.hat.triggerAttackRelease(1.2, at, v * 0.7)
+        break
     }
   }
 
@@ -403,11 +431,12 @@ export function createInstrument(id: InstrumentId): Instrument {
 }
 
 export const DRUM_VOICES: { id: DrumVoice; label: string; row: number }[] = [
-  { id: 'openhat', label: 'Open Hat', row: 0 },
-  { id: 'hat', label: 'Hi-Hat', row: 1 },
-  { id: 'rim', label: 'Rim', row: 2 },
-  { id: 'clap', label: 'Clap', row: 3 },
-  { id: 'snare', label: 'Snare', row: 4 },
-  { id: 'tom', label: 'Tom', row: 5 },
-  { id: 'kick', label: 'Kick', row: 6 },
+  { id: 'crash', label: 'Crash', row: 0 },
+  { id: 'openhat', label: 'Open Hat', row: 1 },
+  { id: 'hat', label: 'Hi-Hat', row: 2 },
+  { id: 'rim', label: 'Rim', row: 3 },
+  { id: 'clap', label: 'Clap', row: 4 },
+  { id: 'snare', label: 'Snare', row: 5 },
+  { id: 'tom', label: 'Tom', row: 6 },
+  { id: 'kick', label: 'Kick', row: 7 },
 ]

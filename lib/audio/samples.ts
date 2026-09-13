@@ -58,24 +58,39 @@ export function loadInstrumentSamples(folder: string): Promise<NoteBuffers> {
   return job
 }
 
-const KIT_VOICES = ['kick', 'snare', 'rim', 'tom', 'hat', 'openhat', 'clap'] as const
-let kitBuffers: Partial<Record<string, Tone.ToneAudioBuffer>> | null = null
+const KIT_VOICES = ['kick', 'snare', 'rim', 'tom', 'hat', 'openhat', 'clap', 'crash'] as const
+/** Several recordings per voice, so repeated hits are never identical. */
+let kitBuffers: Record<string, Tone.ToneAudioBuffer[]> | null = null
 let kitJob: Promise<void> | null = null
+
+async function loadOne(url: string): Promise<Tone.ToneAudioBuffer | null> {
+  const buffer = new Tone.ToneAudioBuffer()
+  try {
+    await buffer.load(url)
+    return buffer
+  } catch {
+    return null
+  }
+}
 
 /** One-shot recordings of a real kit, loaded once for the whole app. */
 export function loadDrumKit(): Promise<void> {
   if (kitBuffers) return Promise.resolve()
   if (kitJob) return kitJob
   kitJob = (async () => {
+    let extra: Record<string, string[]> = {}
+    try {
+      const response = await fetch('/samples/drums/kit-extra.json')
+      if (response.ok) extra = await response.json()
+    } catch {
+      // The base kit alone still plays; it just repeats more.
+    }
+
     const entries = await Promise.all(
       KIT_VOICES.map(async (voice) => {
-        const buffer = new Tone.ToneAudioBuffer()
-        try {
-          await buffer.load(`/samples/drums/${voice}.mp3`)
-          return [voice, buffer] as const
-        } catch {
-          return [voice, undefined] as const
-        }
+        const files = [`${voice}.mp3`, ...(extra[voice] ?? [])]
+        const loaded = await Promise.all(files.map((file) => loadOne(`/samples/drums/${file}`)))
+        return [voice, loaded.filter((b): b is Tone.ToneAudioBuffer => b !== null)] as const
       }),
     )
     kitBuffers = Object.fromEntries(entries)
@@ -85,8 +100,19 @@ export function loadDrumKit(): Promise<void> {
   return kitJob
 }
 
-export function drumBuffer(voice: string): AudioBuffer | null {
-  return kitBuffers?.[voice]?.get() ?? null
+/**
+ * One recording of a drum voice. `pick` rotates through the round robins, so
+ * consecutive hits of the same drum use different strokes.
+ */
+export function drumBuffer(voice: string, pick = 0): AudioBuffer | null {
+  const list = kitBuffers?.[voice]
+  if (!list?.length) return null
+  const chosen = list[((pick % list.length) + list.length) % list.length]
+  return chosen?.get() ?? null
+}
+
+export function drumVariantCount(voice: string): number {
+  return kitBuffers?.[voice]?.length ?? 0
 }
 
 export function drumKitReady(): boolean {

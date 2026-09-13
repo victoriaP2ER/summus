@@ -1,7 +1,8 @@
 import { DEMOS, type DemoHit, type DemoNote, type StyleDemo } from './demos'
-import { style as findStyle } from './styles'
+import { style as findStyle, styleSet } from './styles'
 import { generateLead } from './melody'
 import { dedupeNotes, LOOP_COLORS, uid } from '../music'
+import { humanize } from './humanize'
 import type { DrumVoice, Loop, Note } from '../types'
 
 export interface Groove {
@@ -110,8 +111,10 @@ export function grooveToLoops(
   tonic = 60,
   /** Changing the seed writes a different melody over the same groove. */
   seed = 1,
+  /** Which line-up to use */
+  setIndex = 0,
 ): Loop[] {
-  const style = findStyle(styleId)
+  const style = { ...findStyle(styleId), ...styleSet(styleId, setIndex) }
   const { demo } = groove(styleId, grooveId)
   const repeats = Math.max(1, Math.ceil(bars / demo.bars))
 
@@ -164,9 +167,17 @@ export function grooveToLoops(
     }))
 
   const loops: Loop[] = []
-  if (lead.length) loops.push(make('Melodie-Vorschlag', style.lead, dedupeNotes(lead), 'melodic', 0))
-  if (bass.length) loops.push(make('Bass', style.bass, dedupeNotes(bass), 'melodic', 1))
-  if (chords.length) loops.push(make('Akkorde', style.chords, dedupeNotes(chords), 'melodic', 2))
-  if (drums.length) loops.push(make('Schlagzeug', 'drums', dedupeNotes(drums), 'drum', 3))
+  if (lead.length) {
+    loops.push(make('Melodie-Vorschlag', style.lead, humanize(dedupeNotes(lead), styleId, 'lead', seed), 'melodic', 0))
+  }
+  if (bass.length) {
+    loops.push(make('Bass', style.bass, humanize(dedupeNotes(bass), styleId, 'bass', seed + 1), 'melodic', 1))
+  }
+  if (chords.length) {
+    loops.push(make('Akkorde', style.chords, humanize(dedupeNotes(chords), styleId, 'chords', seed + 2), 'melodic', 2))
+  }
+  if (drums.length) {
+    loops.push(make('Schlagzeug', 'drums', humanize(dedupeNotes(drums), styleId, 'drums', seed + 3), 'drum', 3))
+  }
   return loops
 }
