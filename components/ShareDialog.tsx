@@ -82,7 +82,7 @@ export function ShareDialog({ onClose }: { onClose: () => void }) {
             <h2 className="text-base font-bold text-ink-100">Teilen & Export</h2>
             <p className="mt-0.5 font-mono text-[11px] text-ink-400">
               {bars} Takte · {Math.floor(seconds / 60)}:{String(Math.round(seconds % 60)).padStart(2, '0')} min ·{' '}
-              {store.loops.length} Lanes
+              {store.loops.length} Spuren
             </p>
           </div>
           <Button size="sm" onClick={onClose}>

@@ -111,7 +111,7 @@ function LaneRow({
           onClick={onSelect}
           className="h-8 w-1 shrink-0 rounded-full"
           style={{ background: loop.color, opacity: dimmed ? 0.3 : 1 }}
-          title="Lane auswählen"
+          title="Spur auswählen"
         />
         <button type="button" onClick={onSelect} className="min-w-0 flex-1 text-left">
           <div className="flex items-center gap-1.5">
@@ -166,7 +166,7 @@ function LaneRow({
           <button
             type="button"
             onClick={() => setOpen(!open)}
-            title="Lane bearbeiten"
+            title="Spur bearbeiten"
             className={clsx(
               'flex h-6 w-6 items-center justify-center rounded-md border text-[10px] transition-colors',
               open

@@ -188,7 +188,7 @@ export function MidiPanel() {
       )}
 
       <div className="flex items-center justify-between rounded-lg border border-ink-700 bg-ink-950 px-2.5 py-2">
-        <span className="text-[10px] uppercase tracking-[0.12em] text-ink-400">Ziel-Lane</span>
+        <span className="text-[10px] uppercase tracking-[0.12em] text-ink-400">Ziel-Spur</span>
         <span className={clsx('truncate text-[11px] font-medium', loop ? 'text-ink-100' : 'text-ink-500')}>
           {loop ? loop.name : 'keine ausgewählt'}
         </span>
@@ -200,7 +200,7 @@ export function MidiPanel() {
 
       {armed && !isPlaying && (
         <p className="rounded-lg border border-amber-400/40 bg-amber-400/10 px-2.5 py-1.5 text-[10px] text-amber-300">
-          Starte die Wiedergabe — dann werden deine Anschläge in die Lane geschrieben.
+          Starte die Wiedergabe — dann werden deine Anschläge in die Spur geschrieben.
         </p>
       )}
 

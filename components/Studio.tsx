@@ -188,7 +188,7 @@ export function Studio({ startGuided = false }: { startGuided?: boolean }) {
           {hasLanes && (
             <div className="flex items-center gap-1 border-b border-ink-700 bg-ink-900 px-3 py-1.5">
               <TabButton active={tab === 'editor'} onClick={() => patch({ tab: 'editor' })}>
-                Lane bearbeiten
+                Spur bearbeiten
               </TabButton>
               {showArrangement && (
                 <TabButton active={tab === 'song'} onClick={() => patch({ tab: 'song' })}>
@@ -224,7 +224,7 @@ export function Studio({ startGuided = false }: { startGuided?: boolean }) {
         <nav className="flex border-t border-ink-700 bg-ink-900 lg:hidden">
           {(
             [
-              ['lanes', 'Lanes'],
+              ['lanes', 'Spuren'],
               ['editor', 'Editor'],
               ...(advanced ? ([['more', 'Aufnehmen']] as const) : []),
             ] as const

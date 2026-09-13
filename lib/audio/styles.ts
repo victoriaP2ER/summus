@@ -28,6 +28,9 @@ export interface Style {
   bass: InstrumentId
   /** Two alternative leads offered next to the main one */
   alternates: InstrumentId[]
+  /** Everything worth trying in this style, keys included — every genre has
+   *  some kind of keyboard, it just looks different each time. */
+  picks: InstrumentId[]
   /** Artwork shown while picking — gradient plus a simple motif */
   colors: [string, string]
   motif: Motif
@@ -49,6 +52,7 @@ export const STYLES: Style[] = [
     chords: 'synthPad',
     bass: 'synthBass',
     alternates: ['synthLead', 'dreamy'],
+    picks: ['supersaw', 'synthLead', 'squareLead', 'pluckSynth', 'synthPad', 'dreamy', 'epiano', 'organ', 'choirPad', 'synthBass', 'subBass'],
     colors: ['#f472b6', '#7c3aed'],
     motif: 'sun',
   },
@@ -63,6 +67,7 @@ export const STYLES: Style[] = [
     chords: 'epiano',
     bass: 'synthBass',
     alternates: ['supersaw', 'organ'],
+    picks: ['pluckSynth', 'supersaw', 'epiano', 'organ', 'synthPad', 'guitarClean', 'dreamy', 'squareLead', 'synthBass', 'bass'],
     colors: ['#fbbf24', '#f43f5e'],
     motif: 'disco',
   },
@@ -77,6 +82,7 @@ export const STYLES: Style[] = [
     chords: 'guitarClean',
     bass: 'bass',
     alternates: ['organ', 'squareLead'],
+    picks: ['guitarDist', 'guitarClean', 'organ', 'piano', 'squareLead', 'synthLead', 'trumpet', 'bass', 'synthBass'],
     colors: ['#f43f5e', '#1f2937'],
     motif: 'bolt',
   },
@@ -91,6 +97,7 @@ export const STYLES: Style[] = [
     chords: 'strings',
     bass: 'cello',
     alternates: ['flute', 'brass'],
+    picks: ['violinSolo', 'violin', 'strings', 'cello', 'contrabass', 'flute', 'clarinet', 'frenchHorn', 'brass', 'harp', 'piano'],
     colors: ['#fcd34d', '#92400e'],
     motif: 'arcs',
   },
@@ -105,6 +112,7 @@ export const STYLES: Style[] = [
     chords: 'choirPad',
     bass: 'cello',
     alternates: ['brass', 'violinSolo'],
+    picks: ['strings', 'choirPad', 'brass', 'frenchHorn', 'trombone', 'cello', 'violinSolo', 'piano', 'harp', 'dreamy', 'subBass'],
     colors: ['#60a5fa', '#1e1b4b'],
     motif: 'film',
   },
@@ -119,6 +127,7 @@ export const STYLES: Style[] = [
     chords: 'dreamy',
     bass: 'subBass',
     alternates: ['marimba', 'kalimba'],
+    picks: ['epiano', 'piano', 'dreamy', 'marimba', 'kalimba', 'guitarNylon', 'harp', 'synthPad', 'organ', 'subBass'],
     colors: ['#a78bfa', '#4c1d95'],
     motif: 'waves',
   },
@@ -133,6 +142,7 @@ export const STYLES: Style[] = [
     chords: 'harp',
     bass: 'bass',
     alternates: ['flute', 'panflute'],
+    picks: ['guitarNylon', 'guitarSteel', 'flute', 'panflute', 'harp', 'violin', 'clarinet', 'piano', 'marimba', 'bass'],
     colors: ['#fb923c', '#7c2d12'],
     motif: 'campfire',
   },
@@ -147,6 +157,7 @@ export const STYLES: Style[] = [
     chords: 'harp',
     bass: 'subBass',
     alternates: ['glockenspiel', 'kalimba'],
+    picks: ['celesta', 'glockenspiel', 'harp', 'xylophone', 'marimba', 'kalimba', 'piano', 'flute', 'choirPad', 'subBass'],
     colors: ['#f9a8d4', '#818cf8'],
     motif: 'sparkle',
   },
@@ -161,6 +172,7 @@ export const STYLES: Style[] = [
     chords: 'epiano',
     bass: 'bass',
     alternates: ['trumpet', 'clarinet'],
+    picks: ['sax', 'trumpet', 'trombone', 'epiano', 'piano', 'organ', 'guitarClean', 'clarinet', 'contrabass', 'bass'],
     colors: ['#f59e0b', '#7f1d1d'],
     motif: 'horn',
   },
@@ -175,6 +187,7 @@ export const STYLES: Style[] = [
     chords: 'synthPad',
     bass: 'synthBass',
     alternates: ['supersaw', 'dreamy'],
+    picks: ['squareLead', 'supersaw', 'synthLead', 'synthPad', 'dreamy', 'organ', 'epiano', 'pluckSynth', 'synthBass', 'subBass'],
     colors: ['#22d3ee', '#1e3a8a'],
     motif: 'grid',
   },
@@ -189,6 +202,7 @@ export const STYLES: Style[] = [
     chords: 'dreamy',
     bass: 'subBass',
     alternates: ['supersaw', 'squareLead'],
+    picks: ['pluckSynth', 'supersaw', 'squareLead', 'dreamy', 'synthPad', 'epiano', 'organ', 'subBass', 'synthBass'],
     colors: ['#34d399', '#0f766e'],
     motif: 'pulse',
   },
@@ -203,6 +217,7 @@ export const STYLES: Style[] = [
     chords: 'pluckSynth',
     bass: 'synthBass',
     alternates: ['glockenspiel', 'organ'],
+    picks: ['squareLead', 'pluckSynth', 'glockenspiel', 'xylophone', 'organ', 'epiano', 'supersaw', 'marimba', 'synthBass'],
     colors: ['#4ade80', '#065f46'],
     motif: 'pixel',
   },
@@ -210,6 +225,12 @@ export const STYLES: Style[] = [
 
 export function style(id: string): Style {
   return STYLES.find((s) => s.id === id) ?? STYLES[0]
+}
+
+/** Everything this style suggests, with the roles first. */
+export function styleInstruments(id: string): InstrumentId[] {
+  const s = style(id)
+  return [...new Set([s.lead, s.chords, s.bass, ...s.alternates, ...s.picks])]
 }
 
 /** Instrument palette the song split hands to its generated lanes. */

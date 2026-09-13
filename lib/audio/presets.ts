@@ -1,8 +1,17 @@
 import type { InstrumentId } from '../types'
 
-export type Family = 'Streicher' | 'Bläser' | 'Tasten' | 'Zupf' | 'Synth' | 'Bass' | 'Chor' | 'Drums'
+export type Family =
+  | 'Streichinstrumente'
+  | 'Blasinstrumente'
+  | 'Tasteninstrumente'
+  | 'Zupfinstrumente'
+  | 'Stabspiele'
+  | 'Synthesizer'
+  | 'Chor'
+  | 'Bass'
+  | 'Schlagzeug'
 
-export type VoiceKind = 'synth' | 'fm' | 'am' | 'mono' | 'pluck' | 'drums' | 'sampler'
+export type VoiceKind = 'synth' | 'fm' | 'am' | 'mono' | 'drums' | 'sampler'
 
 export type FxSpec =
   | { type: 'filter'; frequency: number; kind?: BiquadFilterType; rolloff?: -12 | -24 | -48; Q?: number }
@@ -21,6 +30,8 @@ export interface Preset {
   /** One line the UI shows while you are picking */
   hint: string
   emoji: string
+  /** Words people might search for — spellings, relatives, genres */
+  tags?: string[]
   /** Comfortable MIDI range — a hummed take gets folded into this */
   low: number
   high: number
@@ -32,12 +43,19 @@ export interface Preset {
   gain?: number
   /** Folder under public/samples — set for every recorded instrument */
   sample?: string
-  /** True when the sound is synthesised rather than recorded */
-  synthetic?: boolean
+  /** Natural release in seconds, used as the centre of the Ausklang control */
+  release?: number
 }
 
+const room = (roomSize: number, wet: number, dampening = 3000): FxSpec => ({
+  type: 'reverb',
+  roomSize,
+  dampening,
+  wet,
+})
+
 /** A preset backed by real recordings under public/samples. */
-function sampled(
+function real(
   id: string,
   label: string,
   family: Family,
@@ -46,111 +64,169 @@ function sampled(
   sample: string,
   low: number,
   high: number,
-  fx: FxSpec[] = [],
-  options: Record<string, unknown> = {},
-  gain = 0,
+  options: {
+    fx?: FxSpec[]
+    tags?: string[]
+    gain?: number
+    release?: number
+    attack?: number
+  } = {},
 ): Preset {
-  return { id, label, family, hint, emoji, low, high, voice: 'sampler', sample, fx, options, gain }
+  return {
+    id,
+    label,
+    family,
+    hint,
+    emoji,
+    sample,
+    low,
+    high,
+    voice: 'sampler',
+    tags: options.tags,
+    fx: options.fx ?? [room(0.55, 0.2)],
+    gain: options.gain ?? 0,
+    release: options.release ?? 0.8,
+    options: {
+      release: options.release ?? 0.8,
+      ...(options.attack !== undefined ? { attack: options.attack } : {}),
+    },
+  }
 }
 
 export const PRESETS: Preset[] = [
-  // ---------------------------------------------------------------- Streicher
-  sampled('violin', 'Violine', 'Streicher', 'Weich gestrichen, echtes Instrument', '🎻', 'violin', 55, 91, [
-    { type: 'reverb', roomSize: 0.7, dampening: 3000, wet: 0.26 },
-  ]),
-  sampled('violinSolo', 'Violine solo', 'Streicher', 'Nah und direkt, wenig Raum — für die Hauptmelodie', '🎻', 'violin', 55, 91, [
-    { type: 'filter', frequency: 9000, kind: 'highshelf' },
-    { type: 'reverb', roomSize: 0.45, wet: 0.12 },
-  ]),
-  sampled('strings', 'Streicher-Ensemble', 'Streicher', 'Breit und getragen, wie ein ganzes Orchester', '🎼', 'violin', 48, 88, [
-    { type: 'chorus', frequency: 0.45, delayTime: 8, depth: 0.75, wet: 0.55 },
-    { type: 'reverb', roomSize: 0.9, dampening: 2400, wet: 0.45 },
-  ], { attack: 0.35, release: 1.6 }, -3),
-  sampled('cello', 'Cello', 'Streicher', 'Dunkel und tragend', '🎻', 'cello', 36, 74, [
-    { type: 'reverb', roomSize: 0.75, dampening: 2000, wet: 0.28 },
-  ]),
-  sampled('contrabass', 'Kontrabass', 'Streicher', 'Das tiefste Streichinstrument', '🎻', 'contrabass', 28, 60, [
-    { type: 'reverb', roomSize: 0.6, dampening: 1500, wet: 0.2 },
-  ]),
-  {
-    id: 'pizzicato',
-    label: 'Pizzicato',
-    family: 'Streicher',
-    hint: 'Kurz gezupfte Saiten — nachgebaut, nicht aufgenommen',
-    emoji: '🎻',
-    low: 45,
-    high: 92,
-    voice: 'synth',
-    synthetic: true,
-    options: {
-      oscillator: { type: 'triangle' },
-      envelope: { attack: 0.002, decay: 0.22, sustain: 0, release: 0.18 },
-    },
-    fx: [{ type: 'filter', frequency: 3800 }, { type: 'reverb', roomSize: 0.5, wet: 0.18 }],
-  },
+  // ------------------------------------------------------ Streichinstrumente
+  real('violin', 'Violine', 'Streichinstrumente', 'Gestrichene Geige, singend und beweglich', '🎻', 'violin', 55, 91, {
+    tags: ['geige', 'fiddle', 'streicher', 'klassik'],
+    fx: [room(0.7, 0.26, 2800)],
+    release: 0.9,
+  }),
+  real('strings', 'Streichorchester', 'Streichinstrumente', 'Viele Geigen zusammen, breit und getragen', '🎼', 'violin', 48, 88, {
+    tags: ['ensemble', 'orchester', 'film', 'streicher'],
+    fx: [
+      { type: 'chorus', frequency: 0.45, delayTime: 8, depth: 0.75, wet: 0.55 },
+      room(0.92, 0.45, 2400),
+    ],
+    attack: 0.35,
+    release: 1.8,
+    gain: -3,
+  }),
+  real('cello', 'Cello', 'Streichinstrumente', 'Tiefe Streicher, warm und tragend', '🎻', 'cello', 36, 74, {
+    tags: ['violoncello', 'streicher', 'tief'],
+    fx: [room(0.75, 0.28, 2000)],
+    release: 1,
+  }),
+  real('contrabass', 'Kontrabass', 'Streichinstrumente', 'Das tiefste Streichinstrument, gestrichen', '🎻', 'contrabass', 28, 60, {
+    tags: ['bass', 'streicher', 'orchester', 'jazz'],
+    fx: [room(0.6, 0.2, 1500)],
+    release: 0.9,
+  }),
+  real('psaltery', 'Psalterium', 'Streichinstrumente', 'Gestrichene Zither, gläsern und schwebend', '🪕', 'psaltery', 57, 84, {
+    tags: ['zither', 'mittelalter', 'bogen', 'psalter'],
+    fx: [room(0.85, 0.4)],
+    release: 1.4,
+  }),
 
-  // ------------------------------------------------------------------ Bläser
-  sampled('flute', 'Flöte', 'Bläser', 'Luftig und hell', '🪈', 'flute', 60, 96, [
-    { type: 'reverb', roomSize: 0.62, wet: 0.26 },
-  ]),
-  sampled('clarinet', 'Klarinette', 'Bläser', 'Rund und holzig', '🎶', 'clarinet', 50, 86, [
-    { type: 'reverb', roomSize: 0.55, wet: 0.2 },
-  ]),
-  sampled('sax', 'Saxophon', 'Bläser', 'Rauchig, mit Biss', '🎷', 'saxophone', 50, 84, [
-    { type: 'reverb', roomSize: 0.6, wet: 0.22 },
-  ]),
-  sampled('trumpet', 'Trompete', 'Bläser', 'Strahlend und vorlaut', '🎺', 'trumpet', 53, 86, [
-    { type: 'reverb', roomSize: 0.55, wet: 0.2 },
-  ]),
-  sampled('trombone', 'Posaune', 'Bläser', 'Warm und breit', '🎺', 'trombone', 40, 72, [
-    { type: 'reverb', roomSize: 0.6, wet: 0.22 },
-  ]),
-  sampled('frenchHorn', 'Waldhorn', 'Bläser', 'Weich und weit, wie aus der Ferne', '📯', 'french-horn', 41, 77, [
-    { type: 'reverb', roomSize: 0.82, dampening: 2200, wet: 0.35 },
-  ]),
-  sampled('brass', 'Bläser-Section', 'Bläser', 'Mehrere Bläser zusammen, wie in einer Big Band', '🎺', 'trumpet', 50, 84, [
-    { type: 'chorus', frequency: 0.8, delayTime: 6, depth: 0.55, wet: 0.4 },
-    { type: 'reverb', roomSize: 0.6, wet: 0.24 },
-  ], { attack: 0.04 }, -3),
+  // --------------------------------------------------------- Blasinstrumente
+  real('flute', 'Querflöte', 'Blasinstrumente', 'Luftig und hell, die klassische Flöte', '🪈', 'flute', 60, 96, {
+    tags: ['floete', 'flöte', 'orchester'],
+    fx: [room(0.62, 0.26)],
+  }),
+  real('recorder', 'Blockflöte', 'Blasinstrumente', 'Sopranblockflöte, klar und schlicht', '🪈', 'recorder', 60, 91, {
+    tags: ['sopran', 'barock', 'floete', 'flöte', 'schule'],
+    fx: [room(0.6, 0.24)],
+  }),
+  real('recorderAlto', 'Altblockflöte', 'Blasinstrumente', 'Tiefer und runder als die Sopranflöte', '🪈', 'recorderAlto', 53, 84, {
+    tags: ['alt', 'barock', 'floete', 'flöte'],
+    fx: [room(0.65, 0.26)],
+  }),
+  real('ocarina', 'Okarina', 'Blasinstrumente', 'Rund und hohl, fast wie ein Pfeifton', '🏺', 'ocarina', 57, 84, {
+    tags: ['ocarina', 'gefaessfloete', 'zelda', 'ton'],
+    fx: [room(0.7, 0.3)],
+  }),
+  real('clarinet', 'Klarinette', 'Blasinstrumente', 'Rund und holzig, sehr gesanglich', '🎶', 'clarinet', 50, 86, {
+    tags: ['holzblaeser', 'klassik', 'klezmer'],
+    fx: [room(0.55, 0.2)],
+  }),
+  real('bassoon', 'Fagott', 'Blasinstrumente', 'Tiefes Holz, näselnd und markant', '🎶', 'bassoon', 41, 74, {
+    tags: ['holzblaeser', 'orchester', 'tief'],
+    fx: [room(0.6, 0.22, 2200)],
+  }),
+  real('sax', 'Saxophon', 'Blasinstrumente', 'Rauchig, mit Biss — Jazz pur', '🎷', 'saxophone', 50, 84, {
+    tags: ['jazz', 'blues', 'tenor', 'sax'],
+    fx: [room(0.6, 0.22)],
+  }),
+  real('trumpet', 'Trompete', 'Blasinstrumente', 'Strahlend und vorlaut', '🎺', 'trumpet', 53, 86, {
+    tags: ['blech', 'fanfare', 'jazz', 'ska'],
+    fx: [room(0.55, 0.2)],
+  }),
+  real('trombone', 'Posaune', 'Blasinstrumente', 'Warm und breit, mit Schmelz', '🎺', 'trombone', 40, 72, {
+    tags: ['blech', 'ska', 'big band'],
+    fx: [room(0.6, 0.22)],
+  }),
+  real('frenchHorn', 'Waldhorn', 'Blasinstrumente', 'Weich und weit, wie aus der Ferne', '📯', 'french-horn', 41, 77, {
+    tags: ['horn', 'blech', 'film', 'orchester'],
+    fx: [room(0.85, 0.36, 2200)],
+    release: 1.1,
+  }),
+  real('tuba', 'Tuba', 'Blasinstrumente', 'Das tiefste Blech, mächtig und rund', '🎺', 'tuba', 29, 58, {
+    tags: ['blech', 'blasmusik', 'oompah', 'tief'],
+    fx: [room(0.65, 0.24, 1800)],
+  }),
+  real('harmonica', 'Mundharmonika', 'Blasinstrumente', 'Blues-Harp, rau und beweglich', '🎵', 'harmonica', 48, 84, {
+    tags: ['blues', 'harp', 'folk', 'country'],
+    fx: [room(0.5, 0.18)],
+  }),
   {
     id: 'panflute',
     label: 'Panflöte',
-    family: 'Bläser',
-    hint: 'Hauchig und weit — nachgebaut',
+    family: 'Blasinstrumente',
+    hint: 'Hauchig und weit — elektronisch nachgebaut',
     emoji: '🪈',
+    tags: ['panfloete', 'anden', 'synth'],
     low: 58,
     high: 92,
     voice: 'am',
-    synthetic: true,
     options: {
       harmonicity: 2,
       oscillator: { type: 'sine' },
       envelope: { attack: 0.11, decay: 0.2, sustain: 0.75, release: 0.5 },
       modulation: { type: 'square' },
     },
-    fx: [
-      { type: 'vibrato', frequency: 4.8, depth: 0.1 },
-      { type: 'reverb', roomSize: 0.85, dampening: 2400, wet: 0.38 },
-    ],
+    fx: [{ type: 'vibrato', frequency: 4.8, depth: 0.1 }, room(0.85, 0.38, 2400)],
+    release: 0.5,
   },
 
-  // ------------------------------------------------------------------ Tasten
-  sampled('piano', 'Flügel', 'Tasten', 'Klassisches Klavier', '🎹', 'piano', 28, 96, [
-    { type: 'reverb', roomSize: 0.5, wet: 0.15 },
-  ]),
-  sampled('organ', 'Orgel', 'Tasten', 'Durchgehend und tragend', '🎹', 'organ', 36, 92, [
-    { type: 'reverb', roomSize: 0.85, wet: 0.32 },
-  ], { release: 0.15 }),
+  // -------------------------------------------------------- Tasteninstrumente
+  real('piano', 'Flügel', 'Tasteninstrumente', 'Klassisches Klavier', '🎹', 'piano', 28, 96, {
+    tags: ['klavier', 'piano', 'grand', 'tasten'],
+    fx: [room(0.5, 0.15)],
+    release: 1.2,
+  }),
+  real('harpsichord', 'Cembalo', 'Tasteninstrumente', 'Gezupfte Tasten, barock und silbrig', '🎹', 'harpsichord', 36, 88, {
+    tags: ['barock', 'bach', 'kielfluegel', 'tasten'],
+    fx: [room(0.6, 0.22)],
+    release: 0.6,
+  }),
+  real('organ', 'Orgel', 'Tasteninstrumente', 'Durchgehend und tragend, wie in der Kirche', '🎹', 'organ', 36, 92, {
+    tags: ['kirche', 'pfeifen', 'tasten', 'rock'],
+    fx: [room(0.85, 0.32)],
+    release: 0.15,
+  }),
+  real('harmonium', 'Harmonium', 'Tasteninstrumente', 'Schnurrendes Zungenorgel-Timbre', '🎹', 'harmonium', 36, 84, {
+    tags: ['indien', 'orgel', 'folk', 'tasten'],
+    fx: [room(0.7, 0.26)],
+    release: 0.35,
+  }),
   {
     id: 'epiano',
     label: 'E-Piano',
-    family: 'Tasten',
-    hint: 'Weich und glockig, sehr 70er — nachgebaut',
+    family: 'Tasteninstrumente',
+    hint: 'Weich und glockig, sehr 70er — elektronisch erzeugt',
     emoji: '🎹',
+    tags: ['rhodes', 'wurlitzer', 'soul', 'lofi', 'synth'],
     low: 32,
     high: 96,
     voice: 'fm',
-    synthetic: true,
     options: {
       harmonicity: 3.01,
       modulationIndex: 14,
@@ -158,116 +234,102 @@ export const PRESETS: Preset[] = [
       envelope: { attack: 0.003, decay: 1.1, sustain: 0.12, release: 0.8 },
       modulationEnvelope: { attack: 0.002, decay: 0.25, sustain: 0, release: 0.2 },
     },
+    fx: [{ type: 'chorus', frequency: 1.2, delayTime: 3, depth: 0.4, wet: 0.35 }, room(0.55, 0.2)],
+    release: 0.8,
+  },
+
+  // ---------------------------------------------------------- Zupfinstrumente
+  real('guitarNylon', 'Konzertgitarre', 'Zupfinstrumente', 'Warme Nylonsaiten, gezupft', '🎸', 'guitar-nylon', 40, 84, {
+    tags: ['gitarre', 'klassik', 'spanisch', 'nylon'],
+    fx: [room(0.55, 0.2)],
+    release: 1,
+  }),
+  real('guitarSteel', 'Westerngitarre', 'Zupfinstrumente', 'Stahlsaiten, hell und drahtig', '🎸', 'guitar-acoustic', 40, 84, {
+    tags: ['gitarre', 'folk', 'country', 'akustik'],
+    fx: [room(0.55, 0.2)],
+    release: 1,
+  }),
+  real('guitarClean', 'E-Gitarre', 'Zupfinstrumente', 'Elektrisch und klar, mit etwas Federhall', '🎸', 'guitar-electric', 40, 86, {
+    tags: ['gitarre', 'clean', 'surf', 'indie'],
+    fx: [{ type: 'tremolo', frequency: 4.5, depth: 0.3, wet: 0.3 }, room(0.68, 0.3)],
+    release: 1,
+  }),
+  real('guitarDist', 'E-Gitarre verzerrt', 'Zupfinstrumente', 'Dreckig und laut — Punk, Rock, alles was kracht', '🤘', 'guitar-electric', 38, 84, {
+    tags: ['gitarre', 'distortion', 'punk', 'rock', 'metal'],
     fx: [
-      { type: 'chorus', frequency: 1.2, delayTime: 3, depth: 0.4, wet: 0.35 },
-      { type: 'reverb', roomSize: 0.55, wet: 0.2 },
+      { type: 'distortion', amount: 0.72, wet: 1 },
+      { type: 'filter', frequency: 3400, rolloff: -24 },
+      room(0.45, 0.14),
     ],
-  },
-  {
-    id: 'celesta',
-    label: 'Celesta',
-    family: 'Tasten',
-    hint: 'Zart und funkelnd, wie eine Spieluhr — nachgebaut',
-    emoji: '✨',
-    low: 55,
-    high: 104,
-    voice: 'fm',
-    synthetic: true,
-    options: {
-      harmonicity: 5,
-      modulationIndex: 3,
-      oscillator: { type: 'sine' },
-      envelope: { attack: 0.001, decay: 0.9, sustain: 0, release: 0.7 },
-    },
-    fx: [{ type: 'reverb', roomSize: 0.85, wet: 0.38 }],
-  },
+    gain: -12,
+    release: 0.6,
+  }),
+  real('concertharp', 'Konzertharfe', 'Zupfinstrumente', 'Große Harfe, perlend und weit', '🪕', 'concertharp', 28, 100, {
+    tags: ['harfe', 'orchester', 'engel', 'glissando'],
+    fx: [room(0.82, 0.34)],
+    release: 1.6,
+  }),
+  real('folkharp', 'Volksharfe', 'Zupfinstrumente', 'Kleinere Harfe, intimer und holziger', '🪕', 'folkharp', 36, 88, {
+    tags: ['harfe', 'keltisch', 'folk', 'irisch'],
+    fx: [room(0.72, 0.3)],
+    release: 1.4,
+  }),
+  real('dantranh', 'Đàn tranh', 'Zupfinstrumente', 'Vietnamesische Wölbbrettzither, hell und biegsam', '🪕', 'dantranh', 45, 84, {
+    tags: ['zither', 'asien', 'vietnam', 'koto', 'guzheng'],
+    fx: [room(0.7, 0.3)],
+    release: 1.2,
+  }),
+  real('strumstick', 'Strumstick', 'Zupfinstrumente', 'Dreisaitiges Wanderinstrument, rau und einfach', '🪕', 'strumstick', 38, 81, {
+    tags: ['dulcimer', 'folk', 'appalachian', 'banjo'],
+    fx: [room(0.6, 0.24)],
+    release: 1,
+  }),
 
-  // -------------------------------------------------------------------- Zupf
-  sampled('guitarNylon', 'Konzertgitarre', 'Zupf', 'Warme Nylonsaiten', '🎸', 'guitar-nylon', 40, 84, [
-    { type: 'reverb', roomSize: 0.55, wet: 0.2 },
-  ]),
-  sampled('guitarSteel', 'Westerngitarre', 'Zupf', 'Hell und drahtig', '🎸', 'guitar-acoustic', 40, 84, [
-    { type: 'reverb', roomSize: 0.55, wet: 0.2 },
-  ]),
-  sampled('guitarClean', 'E-Gitarre clean', 'Zupf', 'Klar, mit etwas Federhall', '🎸', 'guitar-acoustic', 40, 84, [
-    { type: 'filter', frequency: 5200 },
-    { type: 'tremolo', frequency: 4.5, depth: 0.3, wet: 0.3 },
-    { type: 'reverb', roomSize: 0.68, wet: 0.3 },
-  ]),
-  sampled('guitarDist', 'E-Gitarre verzerrt', 'Zupf', 'Dreckig und laut — Punk, Rock, alles was kracht', '🤘', 'guitar-acoustic', 38, 84, [
-    { type: 'distortion', amount: 0.75, wet: 1 },
-    { type: 'filter', frequency: 3400, rolloff: -24 },
-    { type: 'reverb', roomSize: 0.45, wet: 0.14 },
-  ], { release: 0.4 }, -12),
-  sampled('harp', 'Harfe', 'Zupf', 'Perlend, mit viel Nachklang', '🪕', 'harp', 45, 96, [
-    { type: 'reverb', roomSize: 0.82, wet: 0.34 },
-  ]),
-  sampled('xylophone', 'Xylophon', 'Zupf', 'Holzig und hell, springt hervor', '🪵', 'xylophone', 67, 100, [
-    { type: 'reverb', roomSize: 0.5, wet: 0.2 },
-  ]),
-  {
-    id: 'kalimba',
-    label: 'Kalimba',
-    family: 'Zupf',
-    hint: 'Kleine Daumenklaviatur, rund und holzig — nachgebaut',
-    emoji: '🪘',
-    low: 52,
-    high: 92,
-    voice: 'fm',
-    synthetic: true,
-    options: {
-      harmonicity: 4,
-      modulationIndex: 2,
-      oscillator: { type: 'sine' },
-      envelope: { attack: 0.002, decay: 0.55, sustain: 0, release: 0.4 },
-    },
-    fx: [{ type: 'filter', frequency: 3400 }, { type: 'reverb', roomSize: 0.6, wet: 0.25 }],
-  },
-  {
-    id: 'marimba',
-    label: 'Marimba',
-    family: 'Zupf',
-    hint: 'Weiches Holz, sehr freundlich — nachgebaut',
-    emoji: '🎼',
-    low: 45,
-    high: 92,
-    voice: 'fm',
-    synthetic: true,
-    options: {
-      harmonicity: 3,
-      modulationIndex: 1.6,
-      oscillator: { type: 'sine' },
-      envelope: { attack: 0.001, decay: 0.7, sustain: 0, release: 0.5 },
-    },
-    fx: [{ type: 'reverb', roomSize: 0.55, wet: 0.22 }],
-  },
-  {
-    id: 'glockenspiel',
-    label: 'Glockenspiel',
-    family: 'Zupf',
-    hint: 'Metallisch und glitzernd — nachgebaut',
-    emoji: '🔔',
-    low: 64,
-    high: 104,
-    voice: 'fm',
-    synthetic: true,
-    options: {
-      harmonicity: 7,
-      modulationIndex: 6,
-      oscillator: { type: 'sine' },
-      envelope: { attack: 0.001, decay: 1.2, sustain: 0, release: 1 },
-    },
-    fx: [{ type: 'reverb', roomSize: 0.85, wet: 0.4 }],
-    gain: -4,
-  },
+  // ---------------------------------------------------------------- Stabspiele
+  real('vibraphone', 'Vibraphon', 'Stabspiele', 'Metallstäbe mit Schweben, sehr jazzig', '🎵', 'vibraphone', 41, 84, {
+    tags: ['vibes', 'jazz', 'mallet', 'metall'],
+    fx: [{ type: 'tremolo', frequency: 5, depth: 0.4, wet: 0.5 }, room(0.7, 0.3)],
+    release: 2,
+  }),
+  real('marimba', 'Marimba', 'Stabspiele', 'Weiches Holz, warm und freundlich', '🪵', 'marimba', 41, 84, {
+    tags: ['mallet', 'holz', 'xylophon', 'afrika'],
+    fx: [room(0.55, 0.22)],
+    release: 1,
+  }),
+  real('balafon', 'Balafon', 'Stabspiele', 'Westafrikanisches Xylophon mit Schnarrton', '🪵', 'balafon', 49, 88, {
+    tags: ['afrika', 'mallet', 'xylophon', 'kalebasse'],
+    fx: [room(0.6, 0.24)],
+    release: 0.9,
+  }),
+  real('xylophone', 'Xylophon', 'Stabspiele', 'Hart und hell, springt hervor', '🪵', 'xylophone', 67, 100, {
+    tags: ['mallet', 'holz', 'orchester'],
+    fx: [room(0.5, 0.2)],
+    release: 0.5,
+  }),
+  real('glockenspiel', 'Glockenspiel', 'Stabspiele', 'Metallisch und glitzernd', '🔔', 'glockenspiel', 67, 103, {
+    tags: ['mallet', 'metall', 'celesta', 'spieluhr'],
+    fx: [room(0.8, 0.34)],
+    release: 1.6,
+  }),
+  real('tubularbells', 'Röhrenglocken', 'Stabspiele', 'Große Glocken, feierlich und lang', '🔔', 'tubularbells', 48, 77, {
+    tags: ['glocken', 'kirche', 'film', 'chimes'],
+    fx: [room(0.9, 0.42)],
+    release: 3,
+  }),
+  real('kalimba', 'Kalimba', 'Stabspiele', 'Daumenklavier, rund und holzig', '🪘', 'kalimba', 43, 84, {
+    tags: ['mbira', 'afrika', 'daumenklavier', 'lofi'],
+    fx: [room(0.6, 0.25)],
+    release: 1,
+  }),
 
-  // ------------------------------------------------------------------- Synth
+  // ------------------------------------------------------------- Synthesizer
   {
     id: 'synthLead',
     label: 'Synth Lead',
-    family: 'Synth',
+    family: 'Synthesizer',
     hint: 'Klarer Leadsound, schneidet durch',
     emoji: '⚡',
+    tags: ['lead', 'saw', 'elektronisch'],
     low: 48,
     high: 96,
     voice: 'synth',
@@ -278,16 +340,18 @@ export const PRESETS: Preset[] = [
     fx: [
       { type: 'filter', frequency: 5200, rolloff: -24 },
       { type: 'delay', delayTime: '8n.', feedback: 0.24, wet: 0.18 },
-      { type: 'reverb', roomSize: 0.55, wet: 0.2 },
+      room(0.55, 0.2),
     ],
     gain: -3,
+    release: 0.35,
   },
   {
     id: 'supersaw',
     label: 'Supersaw',
-    family: 'Synth',
+    family: 'Synthesizer',
     hint: 'Breit und laut, moderner Dance-Lead',
     emoji: '🔊',
+    tags: ['trance', 'edm', 'dance', 'saw'],
     low: 48,
     high: 96,
     voice: 'synth',
@@ -298,16 +362,18 @@ export const PRESETS: Preset[] = [
     fx: [
       { type: 'filter', frequency: 6000, rolloff: -24 },
       { type: 'chorus', frequency: 0.7, delayTime: 4, depth: 0.5, wet: 0.4 },
-      { type: 'reverb', roomSize: 0.6, wet: 0.25 },
+      room(0.6, 0.25),
     ],
     gain: -6,
+    release: 0.4,
   },
   {
     id: 'squareLead',
     label: 'Chiptune',
-    family: 'Synth',
+    family: 'Synthesizer',
     hint: 'Pieps-Sound wie aus einem alten Spiel',
     emoji: '🕹️',
+    tags: ['8bit', 'gameboy', 'square', 'retro'],
     low: 48,
     high: 100,
     voice: 'synth',
@@ -317,13 +383,15 @@ export const PRESETS: Preset[] = [
     },
     fx: [{ type: 'bitcrush', bits: 6, wet: 0.5 }, { type: 'filter', frequency: 7000 }],
     gain: -8,
+    release: 0.1,
   },
   {
     id: 'pluckSynth',
     label: 'Pluck Synth',
-    family: 'Synth',
+    family: 'Synthesizer',
     hint: 'Kurz angerissen, gut für Rhythmisches',
     emoji: '💧',
+    tags: ['house', 'pluck', 'arp', 'deep'],
     low: 45,
     high: 96,
     voice: 'synth',
@@ -334,16 +402,18 @@ export const PRESETS: Preset[] = [
     fx: [
       { type: 'filter', frequency: 3200, rolloff: -24 },
       { type: 'delay', delayTime: '16n', feedback: 0.2, wet: 0.2 },
-      { type: 'reverb', roomSize: 0.6, wet: 0.28 },
+      room(0.6, 0.28),
     ],
     gain: -4,
+    release: 0.25,
   },
   {
     id: 'synthPad',
     label: 'Warme Fläche',
-    family: 'Synth',
+    family: 'Synthesizer',
     hint: 'Legt sich als Teppich unter alles',
     emoji: '🌫️',
+    tags: ['pad', 'ambient', 'flaeche', 'atmo'],
     low: 36,
     high: 88,
     voice: 'synth',
@@ -354,9 +424,29 @@ export const PRESETS: Preset[] = [
     fx: [
       { type: 'filter', frequency: 2400, rolloff: -24 },
       { type: 'chorus', frequency: 0.6, delayTime: 5, depth: 0.7, wet: 0.5 },
-      { type: 'reverb', roomSize: 0.88, wet: 0.45 },
+      room(0.88, 0.45),
     ],
     gain: -6,
+    release: 1.8,
+  },
+  {
+    id: 'dreamy',
+    label: 'Traumsynth',
+    family: 'Synthesizer',
+    hint: 'Verhallt und verträumt, viel Echo',
+    emoji: '🌙',
+    tags: ['dream', 'ambient', 'echo', 'lofi'],
+    low: 48,
+    high: 100,
+    voice: 'fm',
+    options: {
+      harmonicity: 2,
+      modulationIndex: 5,
+      oscillator: { type: 'sine' },
+      envelope: { attack: 0.02, decay: 0.7, sustain: 0.2, release: 1.4 },
+    },
+    fx: [{ type: 'delay', delayTime: '4n.', feedback: 0.42, wet: 0.35 }, room(0.92, 0.5)],
+    release: 1.4,
   },
   {
     id: 'choirPad',
@@ -364,6 +454,7 @@ export const PRESETS: Preset[] = [
     family: 'Chor',
     hint: 'Schwebende Stimmen, sehr feierlich',
     emoji: '👥',
+    tags: ['chor', 'stimmen', 'film', 'aah'],
     low: 40,
     high: 88,
     voice: 'am',
@@ -376,41 +467,25 @@ export const PRESETS: Preset[] = [
     fx: [
       { type: 'vibrato', frequency: 4.2, depth: 0.08 },
       { type: 'chorus', frequency: 0.4, delayTime: 8, depth: 0.8, wet: 0.6 },
-      { type: 'reverb', roomSize: 0.92, wet: 0.55 },
+      room(0.92, 0.55),
     ],
     gain: -4,
-  },
-  {
-    id: 'dreamy',
-    label: 'Traumsynth',
-    family: 'Synth',
-    hint: 'Verhallt und verträumt, viel Echo',
-    emoji: '🌙',
-    low: 48,
-    high: 100,
-    voice: 'fm',
-    options: {
-      harmonicity: 2,
-      modulationIndex: 5,
-      oscillator: { type: 'sine' },
-      envelope: { attack: 0.02, decay: 0.7, sustain: 0.2, release: 1.4 },
-    },
-    fx: [
-      { type: 'delay', delayTime: '4n.', feedback: 0.42, wet: 0.35 },
-      { type: 'reverb', roomSize: 0.92, wet: 0.5 },
-    ],
+    release: 2.2,
   },
 
   // -------------------------------------------------------------------- Bass
-  sampled('bass', 'E-Bass', 'Bass', 'Echter Bass für das Fundament', '🎸', 'bass-electric', 28, 60, [
-    { type: 'filter', frequency: 3000 },
-  ]),
+  real('bass', 'E-Bass', 'Bass', 'Gezupfter Elektrobass für das Fundament', '🎸', 'bass-electric', 28, 60, {
+    tags: ['bassgitarre', 'funk', 'rock', 'pop'],
+    fx: [{ type: 'filter', frequency: 3000 }],
+    release: 0.6,
+  }),
   {
     id: 'synthBass',
     label: 'Synth-Bass',
     family: 'Bass',
     hint: 'Drückend und elektronisch',
     emoji: '🎚️',
+    tags: ['808', 'elektronisch', 'techno', 'house'],
     low: 26,
     high: 58,
     voice: 'mono',
@@ -429,6 +504,7 @@ export const PRESETS: Preset[] = [
     },
     fx: [{ type: 'distortion', amount: 0.18, wet: 0.3 }, { type: 'filter', frequency: 2600 }],
     gain: -3,
+    release: 0.2,
   },
   {
     id: 'subBass',
@@ -436,6 +512,7 @@ export const PRESETS: Preset[] = [
     family: 'Bass',
     hint: 'Nur Tiefe — spürt man mehr als man hört',
     emoji: '🔉',
+    tags: ['808', 'sub', 'dnb', 'dubstep'],
     low: 24,
     high: 52,
     voice: 'synth',
@@ -444,15 +521,17 @@ export const PRESETS: Preset[] = [
       envelope: { attack: 0.02, decay: 0.3, sustain: 0.7, release: 0.4 },
     },
     fx: [{ type: 'filter', frequency: 400 }],
+    release: 0.4,
   },
 
-  // ------------------------------------------------------------------- Drums
+  // --------------------------------------------------------------- Schlagzeug
   {
     id: 'drums',
     label: 'Drumkit',
-    family: 'Drums',
+    family: 'Schlagzeug',
     hint: 'Kick, Snare, Hi-Hat — dein Beatbox-Beat',
     emoji: '🥁',
+    tags: ['schlagzeug', 'beat', 'percussion'],
     low: 0,
     high: 0,
     voice: 'drums',
@@ -460,14 +539,15 @@ export const PRESETS: Preset[] = [
 ]
 
 export const FAMILY_ORDER: Family[] = [
-  'Streicher',
-  'Bläser',
-  'Tasten',
-  'Zupf',
-  'Synth',
+  'Streichinstrumente',
+  'Blasinstrumente',
+  'Tasteninstrumente',
+  'Zupfinstrumente',
+  'Stabspiele',
+  'Synthesizer',
   'Chor',
   'Bass',
-  'Drums',
+  'Schlagzeug',
 ]
 
 export function preset(id: InstrumentId): Preset {
@@ -478,8 +558,29 @@ export function presetsByFamily(family: Family): Preset[] {
   return PRESETS.filter((p) => p.family === family)
 }
 
-/** Presets worth offering for a hummed melody — everything but drums and sub. */
+/** Presets worth offering for a hummed melody — everything but the drum kit. */
 export const MELODIC_PRESETS = PRESETS.filter((p) => p.voice !== 'drums')
 
 /** Instruments that are real recordings rather than synthesis. */
 export const SAMPLED_PRESETS = PRESETS.filter((p) => p.voice === 'sampler')
+
+/** Free-text search across names, descriptions and tags. */
+export function searchPresets(query: string): Preset[] {
+  const needle = query.trim().toLowerCase()
+  if (!needle) return []
+  const words = needle.split(/\s+/)
+  return MELODIC_PRESETS.map((p) => {
+    const haystack = `${p.label} ${p.family} ${p.hint} ${(p.tags ?? []).join(' ')}`.toLowerCase()
+    let score = 0
+    for (const word of words) {
+      if (p.label.toLowerCase().startsWith(word)) score += 6
+      else if (p.label.toLowerCase().includes(word)) score += 4
+      else if ((p.tags ?? []).some((t) => t.includes(word))) score += 3
+      else if (haystack.includes(word)) score += 1
+    }
+    return { p, score }
+  })
+    .filter((r) => r.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .map((r) => r.p)
+}

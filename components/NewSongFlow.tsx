@@ -7,10 +7,11 @@ import { Logo } from './Logo'
 import { StyleArt } from './StyleArt'
 import { useMicLevel } from './useMicLevel'
 import { engine } from '@/lib/audio/engine'
-import { MELODIC_PRESETS, preset } from '@/lib/audio/instruments'
-import { FAMILY_ORDER } from '@/lib/audio/presets'
+import { preset, prepareInstrument } from '@/lib/audio/instruments'
+import { demoFor } from '@/lib/audio/demos'
+import { InstrumentPicker } from './InstrumentPicker'
 import { micErrorMessage } from '@/lib/audio/recorder'
-import { STYLES, style as findStyle } from '@/lib/audio/styles'
+import { STYLES, style as findStyle, styleInstruments } from '@/lib/audio/styles'
 import { takeToDrumNotes, takeToNotes } from '@/lib/audio/convert'
 import { detectTempo, tidyBpm } from '@/lib/audio/tempo'
 import { LOOP_COLORS } from '@/lib/music'
@@ -45,8 +46,8 @@ export function NewSongFlow({
   const [recording, setRecording] = useState<'idle' | 'countin' | 'running' | 'working'>('idle')
   const [melodyId, setMelodyId] = useState<string | null>(null)
   const [beatId, setBeatId] = useState<string | null>(null)
-  const [showAll, setShowAll] = useState(false)
-  const startedPlayback = useRef(false)
+  const [demoOn, setDemoOn] = useState(false)
+  const [picking, setPicking] = useState(false)
 
   const store = useStore()
   const { level, peak } = useMicLevel(micReady && (step === 'mic' || recording !== 'idle'))
@@ -91,10 +92,36 @@ export function NewSongFlow({
     }
   }
 
+  /** The genre's own groove at its own tempo — far more telling than a hum. */
+  const playDemo = useCallback(
+    async (id: string, lead?: string) => {
+      const chosen = findStyle(id)
+      const voice = lead ?? chosen.lead
+      engine().stop()
+      useStore.getState().patch({ isPlaying: false })
+      await engine().start()
+      await Promise.all([voice, chosen.chords, chosen.bass].map(prepareInstrument))
+      engine().playDemo(
+        demoFor(id),
+        { lead: voice, chords: chosen.chords, bass: chosen.bass },
+        chosen.bpm,
+      )
+      setDemoOn(true)
+    },
+    [],
+  )
+
+  const stopDemo = useCallback(() => {
+    engine().stopDemo()
+    setDemoOn(false)
+  }, [])
+
   const playMelody = useCallback(() => {
     const state = useStore.getState()
     const loop = state.loops.find((l) => l.id === melodyId)
     if (!loop) return
+    engine().stopDemo()
+    setDemoOn(false)
     engine().metronomeEnabled = false
     engine().setBpm(state.bpm)
     engine().playLoop(loop, state.loops)
@@ -198,16 +225,15 @@ export function NewSongFlow({
     const chosen = findStyle(id)
     store.patch({ bpm: chosen.bpm, scaleId: chosen.scaleId })
     if (melodyId) store.updateLoop(melodyId, { instrument: chosen.lead })
-    if (beatId) store.updateLoop(beatId, { instrument: 'drums' })
-    if (!startedPlayback.current) {
-      startedPlayback.current = true
-      setTimeout(playMelody, 120)
-    }
+    void playDemo(id)
   }
 
   const applyInstrument = (id: InstrumentId) => {
     if (melodyId) store.updateLoop(melodyId, { instrument: id })
-    if (!store.isPlaying) playMelody()
+    void prepareInstrument(id).then(() => {
+      if (engine().demoPlaying) engine().setDemoRole('lead', id)
+      else void playDemo(styleId, id)
+    })
   }
 
   const recordBeat = async () => {
@@ -263,6 +289,7 @@ export function NewSongFlow({
   }
 
   const finish = () => {
+    engine().stopDemo()
     engine().stop()
     store.patch({ isPlaying: false, metronome: true })
     onFinish()
@@ -399,19 +426,28 @@ export function NewSongFlow({
                 </button>
               ))}
             </div>
-            <Button variant="accent" size="lg" onClick={() => setStep('instrument')}>
-              Weiter
-            </Button>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <Button size="lg" onClick={() => (demoOn ? stopDemo() : void playDemo(styleId))}>
+                {demoOn ? '⏸ Beispiel stoppen' : '▶ Beispiel hören'}
+              </Button>
+              <Button variant="accent" size="lg" onClick={() => setStep('instrument')}>
+                Weiter
+              </Button>
+            </div>
+            <p className="text-[11px] text-ink-400">
+              Du hörst einen typischen {findStyle(styleId).label}-Groove bei{' '}
+              {findStyle(styleId).bpm} BPM. Leertaste pausiert.
+            </p>
           </StepShell>
         )}
 
         {step === 'instrument' && melody && (
           <StepShell
             title="Welcher Klang gefällt dir?"
-            lead="Klick dich durch — deine Melodie läuft weiter und wechselt sofort das Instrument."
+            lead="Klick dich durch — der Beat läuft weiter und wechselt sofort das Instrument. Mit Meine Melodie hörst du deine eigene Aufnahme darauf."
           >
-            <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-3">
-              {[findStyle(styleId).lead, ...findStyle(styleId).alternates].map((id) => {
+            <div className="grid w-full grid-cols-2 gap-2 sm:grid-cols-4">
+              {styleInstruments(styleId).map((id) => {
                 const spec = preset(id)
                 return (
                   <button
@@ -419,15 +455,22 @@ export function NewSongFlow({
                     type="button"
                     onClick={() => applyInstrument(id)}
                     className={clsx(
-                      'rounded-xl border px-3 py-3 text-left transition-colors',
+                      'rounded-xl border px-2.5 py-2.5 text-left transition-colors',
                       melody.instrument === id
                         ? 'border-accent bg-accent/15'
                         : 'border-ink-700 bg-ink-850 hover:border-ink-500',
                     )}
                   >
-                    <div className="text-lg">{spec.emoji}</div>
-                    <div className="mt-1 text-xs font-semibold text-ink-100">{spec.label}</div>
-                    <div className="mt-0.5 text-[10px] leading-tight text-ink-400">{spec.hint}</div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-lg">{spec.emoji}</span>
+                      {spec.voice === 'sampler' && (
+                        <span className="rounded bg-mint/15 px-1 py-0.5 text-[9px] text-mint">echt</span>
+                      )}
+                    </div>
+                    <div className="mt-1 text-[11px] font-semibold text-ink-100">{spec.label}</div>
+                    <div className="mt-0.5 line-clamp-2 text-[10px] leading-tight text-ink-400">
+                      {spec.hint}
+                    </div>
                   </button>
                 )
               })}
@@ -435,54 +478,34 @@ export function NewSongFlow({
 
             <button
               type="button"
-              onClick={() => setShowAll(!showAll)}
+              onClick={() => setPicking(true)}
               className="text-[11px] text-ink-300 underline-offset-2 hover:text-accent hover:underline"
             >
-              {showAll ? 'Weniger anzeigen' : `Alle ${MELODIC_PRESETS.length} Instrumente anzeigen`}
+              Alle Instrumente durchsuchen
             </button>
 
-            {showAll && (
-              <div className="w-full space-y-3">
-                {FAMILY_ORDER.filter((f) => f !== 'Drums').map((family) => {
-                  const list = MELODIC_PRESETS.filter((p) => p.family === family)
-                  if (!list.length) return null
-                  return (
-                    <div key={family}>
-                      <h4 className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-400">
-                        {family}
-                      </h4>
-                      <div className="flex flex-wrap gap-1.5">
-                        {list.map((spec) => (
-                          <button
-                            key={spec.id}
-                            type="button"
-                            onClick={() => applyInstrument(spec.id)}
-                            title={spec.hint}
-                            className={clsx(
-                              'rounded-lg border px-2.5 py-1.5 text-[11px] transition-colors',
-                              melody.instrument === spec.id
-                                ? 'border-accent bg-accent/15 text-accent'
-                                : 'border-ink-700 bg-ink-850 text-ink-200 hover:border-ink-500',
-                            )}
-                          >
-                            {spec.emoji} {spec.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-
-            <div className="flex gap-2">
+            <div className="flex flex-wrap justify-center gap-2">
+              <Button size="lg" onClick={() => (demoOn ? stopDemo() : void playDemo(styleId, melody.instrument))}>
+                {demoOn ? '⏸ Beispiel stoppen' : '▶ Beispiel'}
+              </Button>
               <Button size="lg" onClick={() => (store.isPlaying ? engine().stop() : playMelody())}>
-                {store.isPlaying ? '⏸ Stopp' : '▶ Anhören'}
+                {store.isPlaying ? '⏸ Stopp' : '▶ Meine Melodie'}
               </Button>
               <Button variant="accent" size="lg" onClick={() => setStep('beat')}>
                 Weiter
               </Button>
             </div>
+
+            {picking && (
+              <InstrumentPicker
+                value={melody.instrument}
+                styleId={styleId}
+                transpose={melody.transpose}
+                onChange={applyInstrument}
+                onTranspose={(t) => melodyId && store.updateLoop(melodyId, { transpose: t })}
+                onClose={() => setPicking(false)}
+              />
+            )}
           </StepShell>
         )}
 
@@ -497,7 +520,10 @@ export function NewSongFlow({
               state={recording}
               counter={counter}
               label="Beat einsprechen"
-              onStart={recordBeat}
+              onStart={() => {
+                stopDemo()
+                void recordBeat()
+              }}
               onStop={() => engine().cancelRecord()}
             />
             {beatId && (

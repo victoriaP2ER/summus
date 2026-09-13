@@ -49,20 +49,36 @@ npm run dev
 
 ## Instrumente
 
-Die akustischen Instrumente sind **echte Aufnahmen** (`public/samples/`), die
-elektronischen sind synthetisiert. In der Instrumentenauswahl steht an jedem
-Klang, was er ist.
+36 Instrumente sind **echte Aufnahmen** (`public/samples/`, rund 9 MB, pro
+Instrument einzeln nachgeladen): Streicher, Holz- und Blechbläser, Blockflöten,
+Okarina, Mundharmonika, Flügel, Cembalo, Orgel, Harmonium, Gitarren, Harfen,
+Đàn tranh, Vibraphon, Marimba, Balafon, Glockenspiel, Röhrenglocken, Kalimba
+und mehr. Die elektronischen Klänge sind synthetisiert. In der
+Instrumentenauswahl steht an jedem Klang, was er ist — „echt" oder „Synth".
 
-Die Samples stammen aus
-[tonejs-instruments](https://github.com/nbrosowsky/tonejs-instruments) von
-Nicholas Brosowsky und stehen unter
-[CC BY 3.0](https://creativecommons.org/licenses/by/3.0/). Ursprüngliche
-Quellen: [Versilian Studios Chamber Orchestra 2 Community
-Edition](https://vis.versilstudios.com/vsco-community.html),
-[Karoryfer Samples](https://www.karoryfer.com/karoryfer-samples),
-[University of Iowa Electronic Music Studios](https://theremin.music.uiowa.edu/)
-und [Freesound](https://freesound.org). Für diese App wurden sie gekürzt,
-ausgeblendet und neu kodiert.
+Herkunft der Samples:
+
+- [Versilian Community Sample Library](https://github.com/sgossner/VCSL)
+  (Versilian Studios) — [CC0](https://creativecommons.org/publicdomain/zero/1.0/),
+  gemeinfrei.
+- [tonejs-instruments](https://github.com/nbrosowsky/tonejs-instruments) von
+  Nicholas Brosowsky — [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/).
+  Ursprünglich aus [VSCO 2 Community
+  Edition](https://vis.versilstudios.com/vsco-community.html),
+  [Karoryfer Samples](https://www.karoryfer.com/karoryfer-samples),
+  [University of Iowa Electronic Music Studios](https://theremin.music.uiowa.edu/)
+  und [Freesound](https://freesound.org).
+
+Für diese App wurden die Aufnahmen gekürzt, ausgeblendet, normalisiert und als
+MP3 neu kodiert.
+
+## Beispielmelodien
+
+Zum Anhören der Instrumente spielt die App kurze Ausschnitte. Verwendet werden
+nur gemeinfreie Stücke — Beethovens *Ode an die Freude* und *Für Elise*, Griegs
+*In der Halle des Bergkönigs* und *Morgenstimmung*, Pachelbels *Kanon in D*,
+*Greensleeves*, *When the Saints Go Marching In* und *Alle meine Entchen* —
+sowie eigens für summus geschriebene Riffs für die elektronischen Stile.
 
 ## Deployment
 

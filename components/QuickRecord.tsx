@@ -61,7 +61,7 @@ export function QuickRecord({ styleId }: { styleId: string }) {
       {result && (
         <div className="pointer-events-auto max-w-xs rounded-xl border border-mint/40 bg-ink-900 p-3 shadow-2xl">
           <p className="text-xs font-semibold text-mint">✓ {result.summary}</p>
-          <p className="mt-0.5 text-[10px] text-ink-400">Liegt als neue Lane bereit.</p>
+          <p className="mt-0.5 text-[10px] text-ink-400">Liegt als neue Spur bereit.</p>
           <div className="mt-2 flex gap-1.5">
             {Math.abs(result.detectedBpm - store.bpm) > 2 && (
               <Button size="sm" onClick={() => store.patch({ bpm: result.detectedBpm })}>

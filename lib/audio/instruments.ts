@@ -2,9 +2,17 @@ import * as Tone from 'tone'
 import type { DrumVoice, InstrumentId } from '../types'
 import { midiToToneNote } from '../music'
 import { PRESETS, preset, type FxSpec, type Preset } from './presets'
-import { cachedSamples, loadInstrumentSamples, samplesReady } from './samples'
+import { loadInstrumentSamples, sampleBuffers, samplesReady } from './samples'
 
-export { PRESETS, preset, presetsByFamily, MELODIC_PRESETS, SAMPLED_PRESETS, FAMILY_ORDER } from './presets'
+export {
+  PRESETS,
+  preset,
+  presetsByFamily,
+  searchPresets,
+  MELODIC_PRESETS,
+  SAMPLED_PRESETS,
+  FAMILY_ORDER,
+} from './presets'
 export type { Preset, Family } from './presets'
 
 /** Kept for the places that still ask for "the instrument list". */
@@ -88,51 +96,7 @@ interface Voice {
   dispose(): void
 }
 
-/**
- * Karplus-Strong plucks are monophonic by design and cannot go inside a
- * PolySynth, so chords are handled with a small round-robin pool instead.
- */
-class PluckPool implements Voice {
-  private voices: Tone.PluckSynth[]
-  private next = 0
-
-  constructor(options: Record<string, unknown>, size = 8) {
-    this.voices = Array.from({ length: size }, () => new Tone.PluckSynth(options as never))
-  }
-
-  private take(): Tone.PluckSynth {
-    const voice = this.voices[this.next]
-    this.next = (this.next + 1) % this.voices.length
-    return voice
-  }
-
-  triggerAttackRelease(note: string, duration: number, time: number, velocity: number): void {
-    this.take().triggerAttackRelease(note, duration, time, velocity)
-  }
-
-  triggerAttack(note: string, time: number, _velocity: number): void {
-    void _velocity
-    this.take().triggerAttack(note, time)
-  }
-
-  triggerRelease(_note: string, time: number): void {
-    // A plucked string rings out on its own; there is nothing to release.
-    void _note
-    void time
-  }
-
-  releaseAll(): void {}
-
-  connect(node: Tone.InputNode): void {
-    for (const voice of this.voices) voice.connect(node)
-  }
-
-  dispose(): void {
-    for (const voice of this.voices) voice.dispose()
-  }
-}
-
-/** A sampler that is still downloading stays silent rather than faking it. */
+/** A recorded instrument that is still downloading stays quiet rather than faking it. */
 class SilentVoice implements Voice {
   triggerAttackRelease(): void {}
   triggerAttack(): void {}
@@ -146,7 +110,7 @@ function buildVoice(spec: Preset): Voice {
   const options = (spec.options ?? {}) as never
   switch (spec.voice) {
     case 'sampler': {
-      const buffers = spec.sample ? cachedSamples(spec.sample) : null
+      const buffers = spec.sample ? sampleBuffers(spec.sample) : null
       if (!buffers || !Object.keys(buffers).length) return new SilentVoice()
       return new Tone.Sampler({ urls: buffers, ...(spec.options ?? {}) } as never)
     }
@@ -156,8 +120,6 @@ function buildVoice(spec: Preset): Voice {
       return new Tone.PolySynth(Tone.AMSynth, options)
     case 'mono':
       return new Tone.PolySynth(Tone.MonoSynth, options)
-    case 'pluck':
-      return new PluckPool(spec.options ?? {})
     default:
       return new Tone.PolySynth(Tone.Synth, options)
   }
@@ -211,6 +173,9 @@ class MelodicInstrument implements Instrument {
   }
 
   trigger(midi: number, durationSec: number, time: number, velocity: number): void {
+    // Swapping a lane's instrument disposes this one, but events already on the
+    // transport keep firing until the schedule is rebuilt a moment later.
+    if (this.disposed) return
     this.synth.triggerAttackRelease(
       midiToToneNote(foldIntoRange(midi, this.id)),
       Math.max(0.03, durationSec),
@@ -220,10 +185,12 @@ class MelodicInstrument implements Instrument {
   }
 
   attack(midi: number, time: number, velocity: number): void {
+    if (this.disposed) return
     this.synth.triggerAttack(midiToToneNote(foldIntoRange(midi, this.id)), time, velocity)
   }
 
   release(midi: number, time: number): void {
+    if (this.disposed) return
     this.synth.triggerRelease(midiToToneNote(foldIntoRange(midi, this.id)), time)
   }
 
@@ -232,6 +199,7 @@ class MelodicInstrument implements Instrument {
   }
 
   releaseAll(): void {
+    if (this.disposed) return
     this.synth.releaseAll()
   }
 
@@ -247,6 +215,7 @@ class DrumKit implements Instrument {
   readonly id: InstrumentId = 'drums'
   readonly isDrum = true
   output: Tone.Volume
+  private disposed = false
   private kick: Tone.MembraneSynth
   private tom: Tone.MembraneSynth
   private snare: Tone.NoiseSynth
@@ -315,6 +284,7 @@ class DrumKit implements Instrument {
   }
 
   triggerDrum(voice: DrumVoice, time: number, velocity: number): void {
+    if (this.disposed) return
     const v = Math.max(0.08, Math.min(1, velocity))
     switch (voice) {
       case 'kick':
@@ -350,6 +320,7 @@ class DrumKit implements Instrument {
   releaseAll(): void {}
 
   dispose(): void {
+    this.disposed = true
     for (const node of [
       this.kick,
       this.tom,

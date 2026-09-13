@@ -130,7 +130,7 @@ export function TopBar({ onShare }: { onShare: () => void }) {
             <button
               type="button"
               onClick={() => patch({ playMode: 'loop' })}
-              title="Nur die ausgewählte Lane wiederholen"
+              title="Nur die ausgewählte Spur wiederholen"
               className={clsx(
                 'px-2.5 py-1.5 text-[11px] font-medium',
                 playMode === 'loop' ? 'bg-accent text-ink-950' : 'bg-ink-800 text-ink-300 hover:bg-ink-700',

@@ -61,3 +61,20 @@ export function loadInstrumentSamples(folder: string): Promise<NoteBuffers> {
 export function cachedSamples(folder: string): NoteBuffers | null {
   return cache.get(folder) ?? null
 }
+
+/**
+ * Raw buffers for building a Sampler.
+ * Tone disposes whatever buffers a Sampler was handed, so the cache must never
+ * give out its own ToneAudioBuffer objects — the next Sampler would find them
+ * dead and throw "No available buffers".
+ */
+export function sampleBuffers(folder: string): Record<string, AudioBuffer> | null {
+  const buffers = cache.get(folder)
+  if (!buffers) return null
+  const out: Record<string, AudioBuffer> = {}
+  for (const [note, buffer] of Object.entries(buffers)) {
+    const raw = buffer.get()
+    if (raw) out[note] = raw
+  }
+  return out
+}

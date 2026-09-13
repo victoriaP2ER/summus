@@ -158,7 +158,7 @@ export function Arrangement() {
 
       {loops.length === 0 ? (
         <div className="flex flex-1 items-center justify-center px-6 text-center text-[11px] leading-relaxed text-ink-400">
-          Sobald du etwas eingesummt hast, erscheinen hier die Lanes.
+          Sobald du etwas eingesummt hast, erscheinen hier die Spuren.
           <br />
           Blöcke lassen sich verschieben und am rechten Rand verlängern.
         </div>

@@ -4,7 +4,8 @@ import * as Tone from 'tone'
 import { createInstrument, prepareInstrument, type Instrument } from './instruments'
 import { MicRecorder, nativeContext, type MicMode } from './recorder'
 import { renderCorrectedVocal } from './autotune'
-import type { Clip, Loop } from '../types'
+import type { Clip, DrumVoice, Loop } from '../types'
+import type { StyleDemo } from './demos'
 import { uid } from '../music'
 
 /** Beats → Tone's bars:beats:sixteenths, so scheduling survives tempo changes. */
@@ -45,6 +46,8 @@ class SummusEngine {
 
   /** Scratch instruments used only for previewing presets */
   private auditions = new Map<string, Instrument>()
+  private demoTimer: number | null = null
+  private demoRoles: { lead: string; chords: string; bass: string } | null = null
   /** Raw takes, keyed so the store only has to remember an id */
   readonly buffers = new Map<string, AudioBuffer>()
   /** Autotuned renders, keyed by loop id */
@@ -84,6 +87,18 @@ class SummusEngine {
   }
 
   private async boot(): Promise<void> {
+    // Tone builds on standardized-audio-context, whose context object is a
+    // wrapper rather than a real BaseAudioContext. Web Audio constructors such
+    // as AudioWorkletNode reject it, which breaks microphone capture — so hand
+    // Tone a native context to run on instead.
+    if (typeof AudioContext !== 'undefined') {
+      try {
+        const native = new AudioContext({ latencyHint: 'interactive' })
+        Tone.setContext(native)
+      } catch {
+        /* keep Tone's own context if the browser refuses a fresh one */
+      }
+    }
     await Tone.start()
     if (Tone.getContext().state !== 'running') {
       await Tone.getContext().resume()
@@ -244,6 +259,7 @@ class SummusEngine {
   }
 
   private buildLoopSchedule(loop: Loop, loops: Loop[]): void {
+    this.stopDemo()
     this.clearSchedule()
     this.syncInstruments(loops)
     this.schedulePart(loop, 0, Infinity)
@@ -254,6 +270,7 @@ class SummusEngine {
   }
 
   private buildSongSchedule(loops: Loop[], clips: Clip[], totalBars: number): void {
+    this.stopDemo()
     this.clearSchedule()
     this.syncInstruments(loops)
     for (const clip of clips) {
@@ -289,6 +306,7 @@ class SummusEngine {
 
   /** Stop sounding but leave the playhead where it is, so it can be scrubbed. */
   pause(): void {
+    this.stopDemo()
     this.transport.pause()
     for (const instrument of this.instruments.values()) instrument.releaseAll()
   }
@@ -305,18 +323,19 @@ class SummusEngine {
     activeLoop: Loop | null,
   ): void {
     if (!this.started || this.transport.state !== 'started') return
-    const position = this.transport.position
+    const ticks = this.transport.ticks
     if (mode === 'loop') {
       if (!activeLoop) return
       this.buildLoopSchedule(activeLoop, loops)
     } else {
       this.buildSongSchedule(loops, clips, totalBars)
     }
-    this.transport.position = position
+    this.transport.ticks = Math.max(0, ticks)
   }
 
   /** Stop and rewind to the top. */
   stop(): void {
+    this.stopDemo()
     this.transport.stop()
     this.transport.position = 0
     for (const instrument of this.instruments.values()) instrument.releaseAll()
@@ -326,7 +345,103 @@ class SummusEngine {
   /** Current transport position in beats. */
   position(): number {
     if (!this.started) return 0
-    return this.transport.ticks / this.transport.PPQ
+    return Math.max(0, this.transport.ticks / this.transport.PPQ)
+  }
+
+  /** A drum hit on the scratch kit, for previews outside the song. */
+  auditionDrum(voice: DrumVoice, time: number, velocity = 0.9): void {
+    if (!this.master) return
+    let kit = this.auditions.get('drums')
+    if (!kit) {
+      kit = createInstrument('drums')
+      kit.output.connect(this.master)
+      this.auditions.set('drums', kit)
+    }
+    kit.triggerDrum(voice, time, velocity)
+  }
+
+  /**
+   * Loop a genre's demo groove on scratch instruments, independently of the
+   * song transport — so a style or an instrument can be judged against a beat
+   * at the right tempo instead of against silence.
+   *
+   * Events are queued only a fraction of a second ahead. Scheduling a whole
+   * loop at once would mean a swapped-out instrument keeps sounding for
+   * several seconds, and stopping would not actually stop anything.
+   */
+  playDemo(
+    demo: StyleDemo,
+    roles: { lead: string; chords: string; bass: string },
+    bpm: number,
+    tonic = 60,
+  ): void {
+    this.stopDemo()
+    if (!this.started) return
+
+    // A demo and the song are never both the right thing to hear.
+    if (this.transport.state === 'started') this.transport.pause()
+
+    this.demoRoles = { ...roles }
+    const beat = 60 / bpm
+    const loopSeconds = demo.bars * 4 * beat
+
+    type Event = { at: number; role?: 'lead' | 'chords' | 'bass'; note?: number; len?: number; vel: number; drum?: DrumVoice }
+    const events: Event[] = [
+      ...demo.lead.map((n) => ({ at: n.at * beat, role: 'lead' as const, note: tonic + n.step, len: n.len * beat, vel: n.vel ?? 0.8 })),
+      ...demo.chords.map((n) => ({ at: n.at * beat, role: 'chords' as const, note: tonic + n.step, len: n.len * beat, vel: n.vel ?? 0.6 })),
+      ...demo.bass.map((n) => ({ at: n.at * beat, role: 'bass' as const, note: tonic + n.step, len: n.len * beat, vel: n.vel ?? 0.9 })),
+      ...demo.drums.map((h) => ({ at: h.at * beat, drum: h.voice, vel: h.vel ?? 0.9 })),
+    ].sort((a, b) => a.at - b.at)
+
+    let loopStart = Tone.now() + 0.2
+    let index = 0
+
+    this.demoTimer = window.setInterval(() => {
+      const roleMap = this.demoRoles
+      if (!roleMap) return
+      const horizon = Tone.now() + 0.3
+      // Walk the loop, wrapping round, queueing only what is about to happen.
+      for (let guard = 0; guard < 64; guard++) {
+        if (index >= events.length) {
+          loopStart += loopSeconds
+          index = 0
+        }
+        const event = events[index]
+        const when = loopStart + event.at
+        if (when > horizon) break
+        if (when > Tone.now()) {
+          if (event.drum) this.auditionDrum(event.drum, when, event.vel)
+          else if (event.role && event.note !== undefined) {
+            this.auditionNote(roleMap[event.role], event.note, event.len ?? 0.3, when, event.vel)
+          }
+        }
+        index++
+      }
+    }, 45)
+  }
+
+  /** Swap an instrument in while the demo keeps running. */
+  setDemoRole(role: 'lead' | 'chords' | 'bass', instrumentId: string): void {
+    if (!this.demoRoles) return
+    const previous = this.demoRoles[role]
+    this.demoRoles[role] = instrumentId
+    // Silence whatever the old instrument still has hanging.
+    if (previous !== instrumentId && !Object.values(this.demoRoles).includes(previous)) {
+      this.auditions.get(previous)?.releaseAll()
+    }
+  }
+
+  get demoPlaying(): boolean {
+    return this.demoTimer !== null
+  }
+
+  stopDemo(): void {
+    if (this.demoTimer !== null) {
+      window.clearInterval(this.demoTimer)
+      this.demoTimer = null
+    }
+    this.demoRoles = null
+    for (const instrument of this.auditions.values()) instrument.releaseAll()
   }
 
   // ---------------------------------------------------------------- recording

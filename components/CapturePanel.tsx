@@ -150,7 +150,7 @@ export function CapturePanel() {
         return {
           tempo: result.tempo,
           count: result.loops.length,
-          summary: `${result.loops.length} Lanes (${result.loops
+          summary: `${result.loops.length} Spuren (${result.loops
             .map((l) => l.name)
             .join(', ')}) · ${result.noteCount} Noten · ${result.bars} Takte`,
           apply: () => {
@@ -590,7 +590,7 @@ function DoneCard({
   return (
     <div className="space-y-3 rounded-xl border border-mint/40 bg-mint/10 p-3">
       <div>
-        <h3 className="text-xs font-semibold text-mint">Fertig — ist als Lane da</h3>
+        <h3 className="text-xs font-semibold text-mint">Fertig — ist als Spur da</h3>
         <p className="mt-1 text-[11px] text-ink-200">{done.summary}</p>
         <p className="mt-0.5 font-mono text-[10px] text-ink-400">
           aus {done.buffer.duration.toFixed(1)}s Aufnahme · Play drücken zum Anhören
@@ -626,7 +626,7 @@ function DoneCard({
         <Button size="sm" variant="accent" onClick={onClose} className="flex-1">
           Weiter aufnehmen
         </Button>
-        <Button size="sm" variant="danger" onClick={onUndo} title="Angelegte Lanes wieder entfernen">
+        <Button size="sm" variant="danger" onClick={onUndo} title="Angelegte Spuren wieder entfernen">
           Rückgängig
         </Button>
       </div>
