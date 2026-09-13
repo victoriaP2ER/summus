@@ -19,12 +19,7 @@ const MODES: { id: CaptureMode; label: string; emoji: string; hint: string }[] =
   { id: 'song', label: 'Song-Skizze', emoji: '🎼', hint: 'Alles auf einmal → ganze Band' },
 ]
 
-const DEMOS = [
-  { file: 'sample3.mp3', label: 'Melodie' },
-  { file: 'sample6-mix.mp3', label: 'Mit Takt-Klopfen' },
-  { file: 'sample4-drums.mp3', label: 'Beatbox' },
-  { file: 'sample5-bass.mp3', label: 'Bassline' },
-]
+const DEMOS = [{ file: 'beispiel-melodie.mp3', label: 'Beispielmelodie' }]
 
 type Phase = 'idle' | 'arming' | 'countin' | 'recording' | 'analyzing' | 'done'
 

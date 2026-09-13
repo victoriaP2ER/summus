@@ -164,7 +164,7 @@ export function NewSongFlow({
     setRecording('working')
     try {
       await engine().start()
-      const response = await fetch('/demo/sample3.mp3')
+      const response = await fetch('/demo/beispiel-melodie.mp3')
       const buffer = await engine().decode(await response.blob())
       const tempo = detectTempo(buffer)
       const bpm = tidyBpm(tempo.bpm)
