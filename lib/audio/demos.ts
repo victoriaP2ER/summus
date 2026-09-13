@@ -264,29 +264,51 @@ export const DEMOS: Record<string, StyleDemo> = {
   },
 
   jazz: {
-    bars: 2,
+    bars: 4,
     drums: [
-      ...hits('kick', [0, 4], 0.6),
-      ...hits('hat', [0, 0.66, 1, 2, 2.66, 3, 4, 4.66, 5, 6, 6.66, 7], 0.45),
-      ...hits('rim', [1, 3, 5, 7], 0.35),
+      // The ride pattern is the heartbeat of a jazz kit: ding — ding-a-ding.
+      ...hits('hat', [0, 1, 1.66, 2, 3, 3.66, 4, 5, 5.66, 6, 7, 7.66, 8, 9, 9.66, 10, 11, 11.66, 12, 13, 13.66, 14, 15, 15.66], 0.4),
+      // Cross-stick on two and four, and a kick so soft it is felt, not heard.
+      ...hits('rim', [1, 3, 5, 7, 9, 11, 13, 15], 0.3),
+      ...hits('kick', [0, 4, 8, 12], 0.25),
+      ...hits('clap', [7.66, 15.66], 0.35),
     ],
-    bass: line([0, 3, 5, 7, 8, 7, 5, 3], 0, 1, 0.85, 0.85).map((n) => ({ ...n, step: n.step - 12 })),
+    // Walking bass: root, a chord tone, the fifth, then a step into the next
+    // chord — quarter notes, never resting. ii - V - I - I in C.
+    bass: [
+      ...line([2, 5, 9, 11], 0, 1, 0.9, 0.9),
+      ...line([7, 11, 14, 13], 4, 1, 0.9, 0.9),
+      ...line([12, 16, 19, 16], 8, 1, 0.9, 0.9),
+      ...line([12, 9, 5, 11], 12, 1, 0.9, 0.9),
+    ].map((n) => ({ ...n, step: n.step - 24 })),
+    // Rootless voicings — the bass has the root, so the piano plays the
+    // colour: third, seventh and the extensions above them.
     chords: [
-      ...chord([3, 7, 10, 14], 0.66, 0.5, 0.5),
-      ...chord([3, 7, 10, 14], 2, 0.5, 0.45),
-      ...chord([2, 5, 9, 12], 4.66, 0.5, 0.5),
-      ...chord([2, 5, 9, 12], 6, 0.5, 0.45),
+      ...chord([5, 9, 12, 16], 0.66, 1.2, 0.5),
+      ...chord([5, 9, 12, 16], 2.5, 0.8, 0.42),
+      ...chord([5, 11, 14, 17], 4.66, 1.2, 0.5),
+      ...chord([5, 11, 14, 17], 6.5, 0.8, 0.42),
+      ...chord([4, 7, 11, 14], 8.66, 1.2, 0.5),
+      ...chord([4, 7, 11, 14], 10.5, 0.8, 0.42),
+      ...chord([4, 7, 11, 16], 12.66, 2.4, 0.5),
     ],
-    // When the Saints Go Marching In — traditional, public domain.
+    // A bebop-flavoured line over the changes rather than a folk tune.
     lead: [
-      { step: 12, at: 0.66, len: 0.5 },
-      { step: 16, at: 1.33, len: 0.5 },
-      { step: 17, at: 2, len: 0.5 },
-      { step: 19, at: 2.66, len: 1.9 },
-      { step: 12, at: 5, len: 0.5 },
-      { step: 16, at: 5.66, len: 0.5 },
-      { step: 17, at: 6.33, len: 0.5 },
-      { step: 19, at: 7, len: 1 },
+      { step: 14, at: 0.66, len: 0.4 },
+      { step: 17, at: 1, len: 0.4 },
+      { step: 21, at: 1.66, len: 0.4 },
+      { step: 20, at: 2, len: 0.8 },
+      { step: 17, at: 3, len: 0.8 },
+      { step: 19, at: 4.66, len: 0.4 },
+      { step: 17, at: 5, len: 0.4 },
+      { step: 14, at: 5.66, len: 0.4 },
+      { step: 11, at: 6, len: 1.4 },
+      { step: 12, at: 8.66, len: 0.8 },
+      { step: 16, at: 9.66, len: 0.4 },
+      { step: 19, at: 10, len: 0.4 },
+      { step: 23, at: 10.66, len: 2.4 },
+      { step: 19, at: 13, len: 0.8 },
+      { step: 16, at: 14, len: 1.9 },
     ],
   },
 

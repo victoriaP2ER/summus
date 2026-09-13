@@ -200,6 +200,11 @@ export default function LandingPage() {
         <p className="text-[11px] text-ink-500">
           summus — summen wird Musik. Alles passiert lokal in deinem Browser.
         </p>
+        <p className="mx-auto mt-2 max-w-2xl text-[10px] leading-relaxed text-ink-600">
+          Die echten Instrumente stammen aus frei lizenzierten Sammlungen: Versilian Community
+          Sample Library und Karoryfer Samples (CC0), tonejs-instruments von Nicholas Brosowsky
+          (CC BY 3.0), FreePats (CC0) sowie die E-Pianos von Greg Sullivan (CC BY 3.0).
+        </p>
       </footer>
     </div>
   )

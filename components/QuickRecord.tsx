@@ -142,6 +142,31 @@ export function QuickRecord({ styleId }: { styleId: string }) {
             type="button"
             onClick={() => {
               setOpen(false)
+              void engine().start()
+              const lane = store.addLoop({
+                name: 'Drums',
+                kind: 'drum',
+                instrument: 'drums',
+                bars,
+                notes: [],
+              })
+              store.selectLoop(lane.id)
+              store.patch({ tab: 'editor' })
+            }}
+            className="flex w-full items-center gap-2.5 rounded-lg border border-ink-700 bg-ink-850 px-2.5 py-2 text-left hover:border-accent"
+          >
+            <span className="text-lg">🖐️</span>
+            <span className="min-w-0">
+              <span className="block text-[11px] font-semibold text-ink-100">Drums klopfen</span>
+              <span className="block truncate text-[10px] text-ink-400">
+                mit Trackpad, Finger oder Tastatur
+              </span>
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false)
               fileRef.current?.click()
             }}
             className="flex w-full items-center gap-2.5 rounded-lg border border-ink-700 bg-ink-850 px-2.5 py-2 text-left hover:border-accent"

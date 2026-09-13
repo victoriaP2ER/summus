@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { clsx } from './clsx'
 import { Button } from './ui'
 import { InstrumentPicker } from './InstrumentPicker'
+import { DrumPads } from './DrumPads'
 import { DRUM_VOICES, instrumentMeta } from '@/lib/audio/instruments'
 import { engine } from '@/lib/audio/engine'
 import { isInScale, midiToName, quantize, uid } from '@/lib/music'
@@ -67,6 +68,7 @@ export function PianoRoll({ loop }: { loop: Loop }) {
   const [follow, setFollow] = useState(true)
   const [hoverSound, setHoverSound] = useState(true)
   const [picking, setPicking] = useState(false)
+  const [pads, setPads] = useState(true)
   const [range, setRange] = useState<Range>(() => computeRange(loop.notes))
 
   const grid = useStore((s) => s.grid)
@@ -436,6 +438,11 @@ export function PianoRoll({ loop }: { loop: Loop }) {
         <Button size="sm" active={follow} onClick={() => setFollow(!follow)} title="Ansicht folgt dem Playhead">
           Mitlaufen
         </Button>
+        {isDrum && (
+          <Button size="sm" active={pads} onClick={() => setPads(!pads)} title="Schläge selbst eintippen">
+            🖐️ Pads
+          </Button>
+        )}
 
         <div className="ml-auto flex items-center gap-2">
           {selectedNoteIds.length > 0 && !isDrum && (
@@ -672,6 +679,8 @@ export function PianoRoll({ loop }: { loop: Loop }) {
           </div>
         </div>
       </div>
+
+      {isDrum && pads && <DrumPads loop={loop} />}
 
       {picking && (
         <InstrumentPicker

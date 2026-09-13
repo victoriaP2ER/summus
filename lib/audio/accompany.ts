@@ -40,9 +40,11 @@ export function buildAccompaniment(
   grooveId = 'basis',
   /** Which line-up to use — different sets make the same genre sound different */
   setIndex = 0,
+  /** Seed for the dice groove */
+  diceSeed = 1,
 ): Loop[] {
   const style = { ...findStyle(styleId), ...styleSet(styleId, setIndex) }
-  const { demo } = findGroove(styleId, grooveId)
+  const { demo } = findGroove(styleId, grooveId, diceSeed)
   const bars = Math.max(1, melody.bars)
   const roots = barRoots(melody.notes, bars)
 

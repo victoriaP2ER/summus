@@ -59,29 +59,36 @@ npm run dev
 
 ## Instrumente
 
-37 Instrumente sind **echte Aufnahmen** — inklusive eines echten Schlagzeugs
-(Bass Drum, Snare, Hi-Hat, Tom, Clap statt synthetischer Nachbauten) — (`public/samples/`, rund 9 MB, pro
+44 Instrumente sind **echte Aufnahmen** (`public/samples/`, rund 11 MB, pro
 Instrument einzeln nachgeladen): Streicher, Holz- und Blechbläser, Blockflöten,
-Okarina, Mundharmonika, Flügel, Cembalo, Orgel, Harmonium, Gitarren, Harfen,
-Đàn tranh, Vibraphon, Marimba, Balafon, Glockenspiel, Röhrenglocken, Kalimba
-und mehr. Die elektronischen Klänge sind synthetisiert. In der
-Instrumentenauswahl steht an jedem Klang, was er ist — „echt" oder „Synth".
+Okarina, Mundharmonika, Akkordeon, Flügel, Cembalo, Orgel, Harmonium,
+Wurlitzer-E-Piano, akustische und elektrische Gitarren, Banjo, Ukulele, Harfen,
+Đàn tranh, Vibraphon, Marimba, Balafon, Steeldrum, Glockenspiel, Röhrenglocken,
+Kalimba, Bassgitarre — und ein echtes Schlagzeug mit drei Anschlägen je Stimme.
+Die elektronischen Klänge sind synthetisiert. In der Instrumentenauswahl steht
+an jedem Klang, was er ist: „echt" oder „Synth".
 
-Herkunft der Samples:
+### Herkunft und Lizenzen
 
-- [Versilian Community Sample Library](https://github.com/sgossner/VCSL)
-  (Versilian Studios) — [CC0](https://creativecommons.org/publicdomain/zero/1.0/),
-  gemeinfrei.
-- [tonejs-instruments](https://github.com/nbrosowsky/tonejs-instruments) von
-  Nicholas Brosowsky — [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/).
-  Ursprünglich aus [VSCO 2 Community
-  Edition](https://vis.versilstudios.com/vsco-community.html),
-  [Karoryfer Samples](https://www.karoryfer.com/karoryfer-samples),
-  [University of Iowa Electronic Music Studios](https://theremin.music.uiowa.edu/)
-  und [Freesound](https://freesound.org).
+| Quelle | Lizenz | Verwendet für |
+| --- | --- | --- |
+| [Versilian Community Sample Library](https://github.com/sgossner/VCSL) | [CC0](https://creativecommons.org/publicdomain/zero/1.0/) | Schlagzeug, Blockflöten, Okarina, Cembalo, Harfen, Stabspiele, Đàn tranh, Mundharmonika, Strumstick |
+| [tonejs-instruments](https://github.com/nbrosowsky/tonejs-instruments) (Nicholas Brosowsky) | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) | Streicher, Bläser, Flügel, Orgel, Harmonium, akustische Gitarren, Xylophon, E-Bass |
+| [Karoryfer Black And Green Guitars](https://github.com/sfzinstruments/karoryfer.black-and-green-guitars) | CC0 | E-Gitarren (clean, angezerrt, verzerrt) |
+| [Karoryfer Black And Blue Basses](https://github.com/sfzinstruments/karoryfer.black-and-blue-basses) | CC0 | Bassgitarre |
+| [FreePats](https://freepats.zenvoid.org/) | CC0 | Akkordeon, Ukulele |
+| [ganjo](https://github.com/sfzinstruments/ganjo) | CC0 | Banjo |
+| [jlearman SteelDrum](https://github.com/sfzinstruments/jlearman.SteelDrum) | Unlicense | Steeldrum |
+| [E-Pianos von Greg Sullivan](https://github.com/sfzinstruments/GregSullivan.E-Pianos) | CC BY 3.0 — **© Greg Sullivan**, Mapping von kinwie | Wurlitzer-E-Piano |
 
-Für diese App wurden die Aufnahmen gekürzt, ausgeblendet, normalisiert und als
-MP3 neu kodiert.
+Die Aufnahmen von tonejs-instruments stammen ursprünglich aus [VSCO 2 Community
+Edition](https://vis.versilstudios.com/vsco-community.html), [Karoryfer
+Samples](https://www.karoryfer.com/karoryfer-samples), den [University of Iowa
+Electronic Music Studios](https://theremin.music.uiowa.edu/) und
+[Freesound](https://freesound.org).
+
+Für diese App wurden alle Aufnahmen gekürzt, ausgeblendet, normalisiert,
+auf die Zieltonhöhe gestimmt und als MP3 neu kodiert.
 
 ## Beispielmelodien
 

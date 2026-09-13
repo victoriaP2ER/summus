@@ -1,3 +1,4 @@
+import { preset } from './presets'
 import type { InstrumentId } from '../types'
 
 export type Motif =
@@ -48,7 +49,7 @@ export interface Style {
  * A style is a shortcut past the instrument list: pick a direction you can
  * picture, get a set that already works together.
  */
-export const STYLES: Style[] = [
+const STYLE_DEFS: Style[] = [
   {
     id: 'synthwave',
     label: '80s Synthwave',
@@ -83,8 +84,8 @@ export const STYLES: Style[] = [
     picks: ['pluckSynth', 'supersaw', 'epiano', 'organ', 'synthPad', 'guitarClean', 'dreamy', 'squareLead', 'synthBass', 'bass'],
     sets: [
       { lead: 'pluckSynth', chords: 'epiano', bass: 'synthBass' },
-      { lead: 'supersaw', chords: 'organ', bass: 'bass' },
-      { lead: 'epiano', chords: 'guitarClean', bass: 'synthBass' },
+      { lead: 'strings', chords: 'piano', bass: 'bass' },
+      { lead: 'epiano', chords: 'guitarClean', bass: 'bass' },
     ],
     colors: ['#fbbf24', '#f43f5e'],
     motif: 'disco',
@@ -99,8 +100,8 @@ export const STYLES: Style[] = [
     lead: 'guitarDist',
     chords: 'guitarClean',
     bass: 'bass',
-    alternates: ['organ', 'squareLead'],
-    picks: ['guitarDist', 'guitarClean', 'organ', 'piano', 'squareLead', 'synthLead', 'trumpet', 'bass', 'synthBass'],
+    alternates: ['guitarDist', 'guitarClean'],
+    picks: ['guitarDist', 'guitarCrunch', 'guitarClean', 'organ', 'piano', 'epiano', 'harmonica', 'trumpet', 'bass', 'bassGuitar'],
     sets: [
       { lead: 'guitarCrunch', chords: 'guitarDist', bass: 'bass' },
       { lead: 'guitarDist', chords: 'guitarClean', bass: 'bass' },
@@ -108,6 +109,26 @@ export const STYLES: Style[] = [
     ],
     colors: ['#f43f5e', '#1f2937'],
     motif: 'bolt',
+  },
+  {
+    id: 'classicRock',
+    label: 'Classic Rock',
+    emoji: '🎸',
+    hint: 'Breite E-Gitarren über Orgel — zum Reinsingen gemacht',
+    bpm: 124,
+    scaleId: 'mixolydian',
+    lead: 'guitarCrunch',
+    chords: 'organ',
+    bass: 'bass',
+    alternates: ['guitarDist', 'guitarClean'],
+    picks: ['guitarCrunch', 'guitarDist', 'guitarClean', 'organ', 'piano', 'epiano', 'bass', 'harmonica', 'sax', 'trumpet', 'wurlitzer', 'bassGuitar'],
+    sets: [
+      { lead: 'guitarCrunch', chords: 'organ', bass: 'bass' },
+      { lead: 'guitarDist', chords: 'guitarClean', bass: 'bass' },
+      { lead: 'harmonica', chords: 'wurlitzer', bass: 'bassGuitar' },
+    ],
+    colors: ['#fb923c', '#7f1d1d'],
+    motif: 'amp',
   },
   {
     id: 'orchestra',
@@ -140,7 +161,7 @@ export const STYLES: Style[] = [
     chords: 'choirPad',
     bass: 'cello',
     alternates: ['brass', 'violinSolo'],
-    picks: ['strings', 'choirPad', 'brass', 'frenchHorn', 'trombone', 'cello', 'violinSolo', 'piano', 'harp', 'dreamy', 'subBass'],
+    picks: ['strings', 'choirPad', 'brass', 'frenchHorn', 'trombone', 'cello', 'violinSolo', 'piano', 'harp', 'dreamy', 'subBass', 'accordion'],
     sets: [
       { lead: 'strings', chords: 'choirPad', bass: 'cello' },
       { lead: 'frenchHorn', chords: 'strings', bass: 'contrabass' },
@@ -157,14 +178,14 @@ export const STYLES: Style[] = [
     bpm: 78,
     scaleId: 'dorian',
     lead: 'epiano',
-    chords: 'dreamy',
-    bass: 'subBass',
-    alternates: ['marimba', 'kalimba'],
-    picks: ['epiano', 'piano', 'dreamy', 'marimba', 'kalimba', 'guitarNylon', 'harp', 'synthPad', 'organ', 'subBass'],
+    chords: 'piano',
+    bass: 'bass',
+    alternates: ['vibraphone', 'guitarNylon'],
+    picks: ['epiano', 'piano', 'dreamy', 'marimba', 'kalimba', 'guitarNylon', 'harp', 'synthPad', 'organ', 'subBass', 'wurlitzer', 'bassGuitar'],
     sets: [
-      { lead: 'epiano', chords: 'dreamy', bass: 'subBass' },
-      { lead: 'piano', chords: 'synthPad', bass: 'bass' },
-      { lead: 'vibraphone', chords: 'epiano', bass: 'subBass' },
+      { lead: 'epiano', chords: 'piano', bass: 'bass' },
+      { lead: 'vibraphone', chords: 'wurlitzer', bass: 'bassGuitar' },
+      { lead: 'guitarNylon', chords: 'piano', bass: 'contrabass' },
     ],
     colors: ['#a78bfa', '#4c1d95'],
     motif: 'waves',
@@ -180,11 +201,11 @@ export const STYLES: Style[] = [
     chords: 'harp',
     bass: 'bass',
     alternates: ['flute', 'panflute'],
-    picks: ['guitarNylon', 'guitarSteel', 'flute', 'panflute', 'harp', 'violin', 'clarinet', 'piano', 'marimba', 'bass'],
+    picks: ['guitarNylon', 'guitarSteel', 'flute', 'panflute', 'folkharp', 'violin', 'clarinet', 'harmonica', 'piano', 'bass', 'accordion', 'banjo', 'ukulele'],
     sets: [
       { lead: 'guitarNylon', chords: 'folkharp', bass: 'bass' },
-      { lead: 'flute', chords: 'guitarSteel', bass: 'contrabass' },
-      { lead: 'harmonica', chords: 'guitarNylon', bass: 'bass' },
+      { lead: 'accordion', chords: 'guitarSteel', bass: 'contrabass' },
+      { lead: 'banjo', chords: 'guitarNylon', bass: 'bassGuitar' },
     ],
     colors: ['#fb923c', '#7c2d12'],
     motif: 'campfire',
@@ -200,11 +221,11 @@ export const STYLES: Style[] = [
     chords: 'harp',
     bass: 'subBass',
     alternates: ['glockenspiel', 'kalimba'],
-    picks: ['celesta', 'glockenspiel', 'harp', 'xylophone', 'marimba', 'kalimba', 'piano', 'flute', 'choirPad', 'subBass'],
+    picks: ['celesta', 'glockenspiel', 'concertharp', 'folkharp', 'xylophone', 'marimba', 'kalimba', 'vibraphone', 'piano', 'flute', 'harmonium', 'tubularbells', 'ukulele'],
     sets: [
       { lead: 'glockenspiel', chords: 'concertharp', bass: 'subBass' },
       { lead: 'vibraphone', chords: 'folkharp', bass: 'contrabass' },
-      { lead: 'kalimba', chords: 'harmonium', bass: 'subBass' },
+      { lead: 'kalimba', chords: 'harmonium', bass: 'contrabass' },
     ],
     colors: ['#f9a8d4', '#818cf8'],
     motif: 'sparkle',
@@ -213,18 +234,18 @@ export const STYLES: Style[] = [
     id: 'jazz',
     label: 'Jazz',
     emoji: '🎷',
-    hint: 'Saxophon über weichem E-Piano',
-    bpm: 104,
-    scaleId: 'mixolydian',
+    hint: 'Saxophon über Klavier, Walking Bass und Besen auf dem Ride',
+    bpm: 128,
+    scaleId: 'major',
     lead: 'sax',
-    chords: 'epiano',
-    bass: 'bass',
+    chords: 'piano',
+    bass: 'contrabass',
     alternates: ['trumpet', 'clarinet'],
-    picks: ['sax', 'trumpet', 'trombone', 'epiano', 'piano', 'organ', 'guitarClean', 'clarinet', 'contrabass', 'bass'],
+    picks: ['sax', 'trumpet', 'trombone', 'piano', 'epiano', 'organ', 'guitarClean', 'clarinet', 'vibraphone', 'flute', 'contrabass', 'wurlitzer'],
     sets: [
-      { lead: 'sax', chords: 'epiano', bass: 'contrabass' },
-      { lead: 'trumpet', chords: 'piano', bass: 'bass' },
-      { lead: 'clarinet', chords: 'organ', bass: 'contrabass' },
+      { lead: 'sax', chords: 'piano', bass: 'contrabass' },
+      { lead: 'trumpet', chords: 'wurlitzer', bass: 'contrabass' },
+      { lead: 'clarinet', chords: 'piano', bass: 'contrabass' },
     ],
     colors: ['#f59e0b', '#7f1d1d'],
     motif: 'horn',
@@ -280,7 +301,7 @@ export const STYLES: Style[] = [
     chords: 'strings',
     bass: 'contrabass',
     alternates: ['glockenspiel', 'concertharp'],
-    picks: ['flute','strings','concertharp','glockenspiel','piano','choirPad','frenchHorn','marimba','vibraphone','epiano','dreamy','contrabass'],
+    picks: ['flute', 'strings', 'concertharp', 'glockenspiel', 'piano', 'choirPad', 'frenchHorn', 'marimba', 'vibraphone', 'epiano', 'dreamy', 'contrabass', 'accordion'],
     sets: [
       { lead: 'flute', chords: 'strings', bass: 'contrabass' },
       { lead: 'glockenspiel', chords: 'concertharp', bass: 'cello' },
@@ -300,11 +321,11 @@ export const STYLES: Style[] = [
     chords: 'dreamy',
     bass: 'subBass',
     alternates: ['glockenspiel', 'harp'],
-    picks: ['epiano','dreamy','glockenspiel','concertharp','piano','marimba','vibraphone','choirPad','subBass','synthBass'],
+    picks: ['epiano', 'dreamy', 'glockenspiel', 'concertharp', 'piano', 'marimba', 'vibraphone', 'choirPad', 'subBass', 'synthBass', 'wurlitzer'],
     sets: [
-      { lead: 'epiano', chords: 'dreamy', bass: 'subBass' },
-      { lead: 'glockenspiel', chords: 'synthPad', bass: 'subBass' },
-      { lead: 'concertharp', chords: 'choirPad', bass: 'subBass' },
+      { lead: 'glockenspiel', chords: 'dreamy', bass: 'subBass' },
+      { lead: 'epiano', chords: 'synthPad', bass: 'subBass' },
+      { lead: 'concertharp', chords: 'piano', bass: 'subBass' },
     ],
     colors: ['#a78bfa', '#111827'],
     motif: 'bars',
@@ -320,11 +341,11 @@ export const STYLES: Style[] = [
     chords: 'guitarClean',
     bass: 'bass',
     alternates: ['trumpet', 'sax'],
-    picks: ['organ','guitarClean','guitarNylon','trumpet','trombone','sax','piano','epiano','bass','harmonica'],
+    picks: ['organ', 'guitarClean', 'guitarNylon', 'trumpet', 'trombone', 'sax', 'piano', 'epiano', 'harmonica', 'vibraphone', 'bass', 'steelpan', 'bassGuitar'],
     sets: [
       { lead: 'organ', chords: 'guitarClean', bass: 'bass' },
       { lead: 'trumpet', chords: 'guitarNylon', bass: 'bass' },
-      { lead: 'sax', chords: 'organ', bass: 'contrabass' },
+      { lead: 'steelpan', chords: 'organ', bass: 'bassGuitar' },
     ],
     colors: ['#4ade80', '#14532d'],
     motif: 'leaf',
@@ -337,14 +358,14 @@ export const STYLES: Style[] = [
     bpm: 118,
     scaleId: 'minor',
     lead: 'strings',
-    chords: 'epiano',
+    chords: 'piano',
     bass: 'bass',
-    alternates: ['guitarClean', 'trumpet'],
-    picks: ['strings','epiano','piano','guitarClean','trumpet','trombone','sax','organ','bass','vibraphone'],
+    alternates: ['trumpet', 'sax'],
+    picks: ['strings', 'epiano', 'piano', 'guitarClean', 'trumpet', 'trombone', 'sax', 'organ', 'bass', 'vibraphone', 'wurlitzer', 'bassGuitar'],
     sets: [
-      { lead: 'strings', chords: 'epiano', bass: 'bass' },
+      { lead: 'strings', chords: 'piano', bass: 'bass' },
       { lead: 'trumpet', chords: 'guitarClean', bass: 'bass' },
-      { lead: 'sax', chords: 'piano', bass: 'bass' },
+      { lead: 'sax', chords: 'wurlitzer', bass: 'bassGuitar' },
     ],
     colors: ['#f472b6', '#7c3aed'],
     motif: 'disco',
@@ -360,7 +381,7 @@ export const STYLES: Style[] = [
     chords: 'guitarNylon',
     bass: 'contrabass',
     alternates: ['sax', 'vibraphone'],
-    picks: ['guitarNylon','flute','sax','vibraphone','piano','epiano','clarinet','trumpet','contrabass','bass'],
+    picks: ['guitarNylon', 'flute', 'sax', 'vibraphone', 'piano', 'epiano', 'clarinet', 'trumpet', 'contrabass', 'bass', 'wurlitzer', 'ukulele'],
     sets: [
       { lead: 'flute', chords: 'guitarNylon', bass: 'contrabass' },
       { lead: 'sax', chords: 'piano', bass: 'contrabass' },
@@ -411,19 +432,102 @@ export const STYLES: Style[] = [
   },
 ]
 
+/**
+ * The order they are offered in: the broadly recognisable directions first,
+ * the more particular ones at the end.
+ */
+const DISPLAY_ORDER = [
+  'synthwave',
+  'classicRock',
+  'punk',
+  'lofi',
+  'trap',
+  'disco',
+  'frenchHouse',
+  'dnb',
+  'jazz',
+  'orchestra',
+  'cinematic',
+  'jrpg',
+  'reggae',
+  'bossa',
+  'gridrunner',
+  'chiptune',
+  'ambient',
+  'folk',
+  'musicbox',
+]
+
+export const STYLES: Style[] = [...STYLE_DEFS].sort(
+  (a, b) =>
+    (DISPLAY_ORDER.indexOf(a.id) + 1 || 99) - (DISPLAY_ORDER.indexOf(b.id) + 1 || 99),
+)
+
 export function style(id: string): Style {
-  return STYLES.find((s) => s.id === id) ?? STYLES[0]
+  return STYLE_DEFS.find((s) => s.id === id) ?? STYLE_DEFS[0]
 }
 
-/** One of the style's line-ups, cycling round. */
-export function styleSet(id: string, index: number): { lead: InstrumentId; chords: InstrumentId; bass: InstrumentId } {
+const BASS_FAMILIES = new Set(['Bass'])
+const CHORD_FAMILIES = new Set([
+  'Tasteninstrumente',
+  'Zupfinstrumente',
+  'Streichinstrumente',
+  'Synthesizer',
+  'Chor',
+])
+
+/** Everything in this style's pool that can hold down each role. */
+function pools(id: string): { lead: InstrumentId[]; chords: InstrumentId[]; bass: InstrumentId[] } {
   const s = style(id)
-  if (!s.sets?.length) return { lead: s.lead, chords: s.chords, bass: s.bass }
-  return s.sets[((index % s.sets.length) + s.sets.length) % s.sets.length]
+  const all = [...new Set([...s.picks, ...s.alternates, s.lead, s.chords, s.bass])]
+  const bass = all.filter(
+    (i) => BASS_FAMILIES.has(preset(i).family) || ['contrabass', 'tuba'].includes(i),
+  )
+  const isLow = (i: InstrumentId) => bass.includes(i)
+  return {
+    lead: all.filter((i) => !isLow(i)),
+    // Chords need something that can hold a voicing, not a bass instrument.
+    chords: all.filter((i) => CHORD_FAMILIES.has(preset(i).family) && !isLow(i)),
+    bass: bass.length ? bass : [s.bass],
+  }
+}
+
+/**
+ * One of the style's line-ups.
+ *
+ * The first few are written by hand. Beyond those, further line-ups are drawn
+ * from the style's own instrument pool — so clicking on for a fifth or sixth
+ * variation still changes who is playing, not only what they play.
+ */
+export function styleSet(
+  id: string,
+  index: number,
+): { lead: InstrumentId; chords: InstrumentId; bass: InstrumentId } {
+  const s = style(id)
+  const written = s.sets ?? []
+  const total = styleSetCount(id)
+  const wrapped = ((index % total) + total) % total
+  if (wrapped < written.length) return written[wrapped]
+
+  const pool = pools(id)
+  const step = wrapped - written.length
+  const pickFrom = (list: InstrumentId[], offset: number, fallback: InstrumentId) =>
+    list.length ? list[(step * offset + written.length) % list.length] : fallback
+
+  const lead = pickFrom(pool.lead, 3, s.lead)
+  // Different offsets keep the three roles from moving in lockstep.
+  let chords = pickFrom(pool.chords, 5, s.chords)
+  if (chords === lead && pool.chords.length > 1) {
+    chords = pool.chords[(pool.chords.indexOf(chords) + 1) % pool.chords.length]
+  }
+  return { lead, chords, bass: pickFrom(pool.bass, 2, s.bass) }
 }
 
 export function styleSetCount(id: string): number {
-  return style(id).sets?.length ?? 1
+  const written = style(id).sets?.length ?? 1
+  const pool = pools(id)
+  // Enough derived line-ups to keep exploring, capped so the cycle stays finite.
+  return written + Math.min(6, Math.max(0, pool.lead.length - written))
 }
 
 /** Everything this style suggests, with the roles first. */

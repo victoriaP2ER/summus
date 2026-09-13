@@ -1,5 +1,6 @@
 import { DEMOS, type DemoHit, type DemoNote, type StyleDemo } from './demos'
 import { style as findStyle, styleSet } from './styles'
+import { improviseGroove } from './improvise'
 import { generateLead } from './melody'
 import { dedupeNotes, LOOP_COLORS, uid } from '../music'
 import { humanize } from './humanize'
@@ -68,25 +69,150 @@ function driving(demo: StyleDemo): StyleDemo {
   }
 }
 
+/** Move the backbeat off the grid: accents land between the beats. */
+function offbeat(demo: StyleDemo): StyleDemo {
+  const shift = (items: DemoHit[]) =>
+    items.map((h) =>
+      h.voice === 'kick' ? h : { ...h, at: Number((h.at + 0.5).toFixed(3)) % (demo.bars * 4) },
+    )
+  return {
+    ...demo,
+    drums: shift(demo.drums),
+    bass: demo.bass,
+    chords: demo.chords.map((n) => ({ ...n, at: Number((n.at + 0.5).toFixed(3)) % (demo.bars * 4) })),
+    lead: demo.lead,
+  }
+}
+
+/** Strip it back to the bare bones — kick, backbeat and a held chord. */
+function sparse(demo: StyleDemo): StyleDemo {
+  return {
+    ...demo,
+    drums: demo.drums.filter(
+      (h) => h.voice === 'kick' || h.voice === 'snare' || h.voice === 'clap',
+    ),
+    bass: keepEvery(demo.bass, 2).map((n) => ({ ...n, len: Math.max(n.len, 1.8) })),
+    chords: holdChords(demo.chords, demo.bars),
+    lead: demo.lead.filter((_, i) => i % 3 === 0).map((n) => ({ ...n, len: n.len * 2 })),
+  }
+}
+
+/** Pull the kick off the downbeat so the groove trips forward. */
+function broken(demo: StyleDemo): StyleDemo {
+  return {
+    ...demo,
+    drums: demo.drums.map((h, i) =>
+      h.voice === 'kick' && i % 2 === 1
+        ? { ...h, at: Number((h.at + 0.75).toFixed(3)) % (demo.bars * 4) }
+        : h,
+    ),
+    bass: demo.bass.map((n, i) =>
+      i % 3 === 2 ? { ...n, at: Number((n.at + 0.25).toFixed(3)), len: Math.min(n.len, 0.4) } : n,
+    ),
+    chords: demo.chords,
+    lead: demo.lead,
+  }
+}
+
+/** Everything at twice the rate — the same groove, twice as urgent. */
+function doubled(demo: StyleDemo): StyleDemo {
+  const fold = <T extends { at: number }>(items: T[]) =>
+    items.flatMap((item) => [
+      { ...item, at: item.at / 2 },
+      { ...item, at: item.at / 2 + demo.bars * 2 },
+    ])
+  return {
+    ...demo,
+    drums: fold(demo.drums) as DemoHit[],
+    bass: fold(demo.bass).map((n) => ({ ...n, len: Math.max(0.2, n.len / 2) })) as DemoNote[],
+    chords: fold(demo.chords).map((n) => ({ ...n, len: Math.max(0.2, n.len / 2) })) as DemoNote[],
+    lead: demo.lead,
+  }
+}
+
+/** Shuffle the off-beats — the lilt that turns straight eighths into a swing. */
+function shuffled(demo: StyleDemo): StyleDemo {
+  const swing = <T extends { at: number }>(items: T[]) =>
+    items.map((item) =>
+      Math.abs((item.at % 1) - 0.5) < 0.02 ? { ...item, at: Number((item.at + 0.16).toFixed(3)) } : item,
+    )
+  return {
+    ...demo,
+    drums: swing(demo.drums) as DemoHit[],
+    bass: swing(demo.bass) as DemoNote[],
+    chords: swing(demo.chords) as DemoNote[],
+    lead: swing(demo.lead) as DemoNote[],
+  }
+}
+
+/** Drop the drums entirely — just the harmony, for singing over. */
+function unplugged(demo: StyleDemo): StyleDemo {
+  return {
+    ...demo,
+    drums: [],
+    bass: keepEvery(demo.bass, 1).map((n) => ({ ...n, len: Math.max(n.len, 0.8) })),
+    chords: demo.chords,
+    lead: demo.lead,
+  }
+}
+
+/** Halve the chords and double the drums — a build-up feel. */
+function driven(demo: StyleDemo): StyleDemo {
+  const busy = driving(demo)
+  return { ...busy, chords: holdChords(demo.chords, demo.bars), lead: demo.lead }
+}
+
 const cache = new Map<string, Groove[]>()
 
-/** Three feels per style, so a genre is not one single loop forever. */
+const SHAPES: { id: string; label: string; hint: string; apply: (d: StyleDemo) => StyleDemo }[] = [
+  { id: 'basis', label: 'Grundgroove', hint: 'Der typische Beat dieser Richtung', apply: (d) => d },
+  { id: 'ruhig', label: 'Ruhig', hint: 'Halbes Tempo im Gefühl, viel Luft', apply: calmer },
+  { id: 'treibend', label: 'Treibend', hint: 'Dichter, mit Offbeats und laufendem Bass', apply: driving },
+  { id: 'sparsam', label: 'Sparsam', hint: 'Nur das Nötigste — viel Platz zum Singen', apply: sparse },
+  { id: 'offbeat', label: 'Offbeat', hint: 'Die Akzente liegen zwischen den Schlägen', apply: offbeat },
+  { id: 'gebrochen', label: 'Gebrochen', hint: 'Verschobene Bassdrum, stolpernd', apply: broken },
+  { id: 'shuffle', label: 'Shuffle', hint: 'Mit Schwung, angeschrägte Achtel', apply: shuffled },
+  { id: 'doppelt', label: 'Doppelt', hint: 'Doppeltes Tempo im Gefühl', apply: doubled },
+  { id: 'aufbau', label: 'Aufbau', hint: 'Dichte Drums über liegenden Akkorden', apply: driven },
+  { id: 'unplugged', label: 'Ohne Drums', hint: 'Nur Harmonie, kein Schlagzeug', apply: unplugged },
+]
+
+/** Ten feels per style, so a genre is never one single loop. */
 export function grooves(styleId: string): Groove[] {
   const cached = cache.get(styleId)
   if (cached) return cached
   const base = DEMOS[styleId] ?? DEMOS.synthwave
-  const list: Groove[] = [
-    { id: 'basis', label: 'Grundgroove', hint: 'Der typische Beat dieser Richtung', demo: base },
-    { id: 'ruhig', label: 'Ruhig', hint: 'Halbes Tempo im Gefühl, viel Luft', demo: calmer(base) },
-    { id: 'treibend', label: 'Treibend', hint: 'Dichter, mit Offbeats und laufendem Bass', demo: driving(base) },
-  ]
+  const list: Groove[] = SHAPES.map((shape) => ({
+    id: shape.id,
+    label: shape.label,
+    hint: shape.hint,
+    demo: shape.apply(base),
+  }))
   cache.set(styleId, list)
   return list
 }
 
-export function groove(styleId: string, grooveId: string): Groove {
+export const DICE_GROOVE = 'wuerfeln'
+
+export function groove(styleId: string, grooveId: string, seed = 1): Groove {
+  if (grooveId === DICE_GROOVE) {
+    return {
+      id: DICE_GROOVE,
+      label: 'Gewürfelt',
+      hint: 'Jedes Mal neu ausgewürfelt — innerhalb der Regeln des Genres',
+      demo: improviseGroove(styleId, seed),
+    }
+  }
   const list = grooves(styleId)
   return list.find((g) => g.id === grooveId) ?? list[0]
+}
+
+/** The composed feels plus the one that is different every time. */
+export function grooveChoices(styleId: string): { id: string; label: string; hint: string }[] {
+  return [
+    ...grooves(styleId).map(({ id, label, hint }) => ({ id, label, hint })),
+    { id: DICE_GROOVE, label: '🎲 Gewürfelt', hint: 'Jedes Mal neu — innerhalb der Regeln des Genres' },
+  ]
 }
 
 function drumNote(hit: DemoHit, shift: number): Note {
@@ -115,7 +241,7 @@ export function grooveToLoops(
   setIndex = 0,
 ): Loop[] {
   const style = { ...findStyle(styleId), ...styleSet(styleId, setIndex) }
-  const { demo } = groove(styleId, grooveId)
+  const { demo } = groove(styleId, grooveId, seed)
   const repeats = Math.max(1, Math.ceil(bars / demo.bars))
 
   const bass: Note[] = []
@@ -154,8 +280,7 @@ export function grooveToLoops(
   const lead = generateLead(demo, seed, {
     bars: totalBars,
     scaleId: style.scaleId,
-    register: 12,
-    density: 0.5,
+    styleId,
   })
     .filter((n) => n.at < totalBeats)
     .map((n) => ({

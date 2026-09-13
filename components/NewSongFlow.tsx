@@ -10,8 +10,8 @@ import { useMicLevel } from './useMicLevel'
 import { engine } from '@/lib/audio/engine'
 import { preset, prepareInstrument } from '@/lib/audio/instruments'
 import { micErrorMessage } from '@/lib/audio/recorder'
-import { STYLES, style as findStyle, styleInstruments, styleSet } from '@/lib/audio/styles'
-import { grooves, grooveToLoops } from '@/lib/audio/grooves'
+import { STYLES, style as findStyle, styleInstruments, styleSet, styleSetCount } from '@/lib/audio/styles'
+import { grooves, grooveChoices, grooveToLoops } from '@/lib/audio/grooves'
 import { buildAccompaniment } from '@/lib/audio/accompany'
 import { takeToDrumNotes, takeToNotes } from '@/lib/audio/convert'
 import { detectTempo, tidyBpm } from '@/lib/audio/tempo'
@@ -241,7 +241,10 @@ export function NewSongFlow({
     const next = id === styleId && bandIds.length ? variation.current + 1 : 0
     variation.current = next
     const nextFeel = feel ?? list[next % list.length]?.id ?? 'basis'
-    const setIndex = Math.floor(next / list.length)
+    // Groove and line-up advance together but at different rates. Ten feels
+    // and three line-ups share no common factor, so every click changes both
+    // and the pairs only come round again after thirty.
+    const setIndex = next % styleSetCount(id)
 
     onStyleChange(id)
     setGrooveId(nextFeel)
@@ -523,8 +526,8 @@ export function NewSongFlow({
 
             {bandIds.length > 0 && (
               <>
-                <div className="flex flex-wrap items-center justify-center gap-1.5">
-                  {grooves(styleId).map((g) => (
+                <div className="flex max-w-xl flex-wrap items-center justify-center gap-1.5">
+                  {grooveChoices(styleId).map((g) => (
                     <button
                       key={g.id}
                       type="button"

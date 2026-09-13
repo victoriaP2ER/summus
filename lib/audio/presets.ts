@@ -185,6 +185,11 @@ export const PRESETS: Preset[] = [
     tags: ['blues', 'harp', 'folk', 'country'],
     fx: [room(0.5, 0.18)],
   }),
+  real('accordion', 'Akkordeon', 'Blasinstrumente', 'Zieharmonika — Volksmusik, Chanson, Polka', '🪗', 'accordion', 46, 84, {
+    tags: ['zieharmonika', 'folk', 'chanson', 'polka', 'schifferklavier'],
+    fx: [room(0.6, 0.22)],
+    release: 0.25,
+  }),
   {
     id: 'panflute',
     label: 'Panflöte',
@@ -225,6 +230,14 @@ export const PRESETS: Preset[] = [
     tags: ['indien', 'orgel', 'folk', 'tasten'],
     fx: [room(0.7, 0.26)],
     release: 0.35,
+  }),
+  real('wurlitzer', 'Wurlitzer E-Piano', 'Tasteninstrumente', 'Echtes Vintage-E-Piano, bellend und warm', '🎹', 'wurlitzer', 33, 96, {
+    tags: ['rhodes', 'vintage', 'soul', 'jazz', 'lofi', 'e-piano'],
+    fx: [
+      { type: 'tremolo', frequency: 5.2, depth: 0.22, wet: 0.3 },
+      room(0.55, 0.2),
+    ],
+    release: 0.9,
   }),
   {
     id: 'epiano',
@@ -295,6 +308,16 @@ export const PRESETS: Preset[] = [
     gain: -17,
     release: 0.35,
   }),
+  real('banjo', 'Banjo', 'Zupfinstrumente', 'Hell und schnarrend — Bluegrass und Country', '🪕', 'banjo', 40, 84, {
+    tags: ['bluegrass', 'country', 'folk', 'americana'],
+    fx: [{ type: 'filter', frequency: 160, kind: 'highpass', rolloff: -12 }, room(0.5, 0.2)],
+    release: 0.7,
+  }),
+  real('ukulele', 'Ukulele', 'Zupfinstrumente', 'Klein, hell und gut gelaunt', '🎸', 'ukulele', 55, 88, {
+    tags: ['hawaii', 'folk', 'sommer', 'kleine gitarre'],
+    fx: [room(0.55, 0.22)],
+    release: 0.8,
+  }),
   real('concertharp', 'Konzertharfe', 'Zupfinstrumente', 'Große Harfe, perlend und weit', '🪕', 'concertharp', 28, 100, {
     tags: ['harfe', 'orchester', 'engel', 'glissando'],
     fx: [room(0.82, 0.34)],
@@ -331,6 +354,11 @@ export const PRESETS: Preset[] = [
     tags: ['afrika', 'mallet', 'xylophon', 'kalebasse'],
     fx: [room(0.6, 0.24)],
     release: 0.9,
+  }),
+  real('steelpan', 'Steeldrum', 'Stabspiele', 'Karibisches Ölfass — Reggae, Calypso, Strand', '🛢️', 'steelpan', 60, 88, {
+    tags: ['karibik', 'calypso', 'reggae', 'steelpan', 'trinidad'],
+    fx: [room(0.68, 0.3)],
+    release: 1.4,
   }),
   real('xylophone', 'Xylophon', 'Stabspiele', 'Hart und hell, springt hervor', '🪵', 'xylophone', 67, 100, {
     tags: ['mallet', 'holz', 'orchester'],
@@ -505,6 +533,11 @@ export const PRESETS: Preset[] = [
   },
 
   // -------------------------------------------------------------------- Bass
+  real('bassGuitar', 'Bassgitarre', 'Bass', 'Gezupfte Bassgitarre mit vollem Tiefgang', '🎸', 'bassGuitar', 23, 57, {
+    tags: ['bass', 'funk', 'rock', 'soul', 'motown'],
+    fx: [{ type: 'filter', frequency: 3200 }],
+    release: 0.7,
+  }),
   real('bass', 'E-Bass', 'Bass', 'Gezupfter Elektrobass für das Fundament', '🎸', 'bass-electric', 28, 60, {
     tags: ['bassgitarre', 'funk', 'rock', 'pop'],
     fx: [{ type: 'filter', frequency: 3000 }],
