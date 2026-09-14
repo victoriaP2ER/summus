@@ -1,5 +1,6 @@
 import { DEMOS, type DemoHit, type DemoNote, type StyleDemo } from './demos'
 import { PROGRESSIONS, withProgression } from './progressions'
+import { genreSpec } from './genres'
 import { style as findStyle, styleSet } from './styles'
 import { improviseGroove } from './improvise'
 import { LEVELS } from './levels'
@@ -184,8 +185,10 @@ const SHAPES: { id: string; label: string; hint: string; apply: (d: StyleDemo) =
 export function grooves(styleId: string): Groove[] {
   const cached = cache.get(styleId)
   if (cached) return cached
-  // Rhythm from the written groove, harmony from the style's progression.
-  const base = withProgression(DEMOS[styleId] ?? DEMOS.synthwave, PROGRESSIONS[styleId])
+  // A researched pattern already carries its own four bars of harmony; the
+  // older ones get the style's progression laid over their rhythm.
+  const researched = genreSpec(styleId)?.demo
+  const base = researched ?? withProgression(DEMOS[styleId] ?? DEMOS.synthwave, PROGRESSIONS[styleId])
   const list: Groove[] = SHAPES.map((shape) => ({
     id: shape.id,
     label: shape.label,

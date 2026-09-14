@@ -195,21 +195,41 @@ class SummusEngine {
     instrument.trigger(midi, durationSec, Math.max(Tone.now(), time), velocity)
   }
 
+  /**
+   * Tear down everything currently scheduled.
+   *
+   * Each stop is given an explicit time of 0. Called with no argument, Tone
+   * stops a part at the transport's current position — and that position is
+   * negative while the transport is still waiting to start, which Tone then
+   * rejects. The throw used to abort whatever was rebuilding the schedule, so a
+   * style change would silently do nothing.
+   */
   private clearSchedule(): void {
+    const quietly = (run: () => void) => {
+      try {
+        run()
+      } catch {
+        /* a part that will not stop cleanly is disposed anyway */
+      }
+    }
+
     for (const part of this.parts) {
-      part.stop()
-      part.dispose()
+      quietly(() => part.stop(0))
+      quietly(() => part.dispose())
     }
     this.parts = []
     for (const player of this.players) {
-      player.stop()
-      player.dispose()
+      quietly(() => player.stop(0))
+      quietly(() => player.dispose())
     }
     this.players = []
-    this.metronomeLoop?.stop()
-    this.metronomeLoop?.dispose()
-    this.metronomeLoop = null
-    this.transport.cancel(0)
+    if (this.metronomeLoop) {
+      const loop = this.metronomeLoop
+      this.metronomeLoop = null
+      quietly(() => loop.stop(0))
+      quietly(() => loop.dispose())
+    }
+    quietly(() => this.transport.cancel(0))
   }
 
   private schedulePart(loop: Loop, startBar: number, repeats: number): void {

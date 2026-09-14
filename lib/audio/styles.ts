@@ -1,3 +1,4 @@
+import { GENRE_SPECS } from './genres'
 import type { InstrumentId } from '../types'
 
 export type Motif =
@@ -461,6 +462,22 @@ const DISPLAY_ORDER = [
   'folk',
   'musicbox',
 ]
+
+// Where a genre has been written against references, its tempo, scale and
+// line-ups come from there rather than from the older defaults.
+for (const def of STYLE_DEFS) {
+  const spec = GENRE_SPECS[def.id]
+  if (!spec) continue
+  def.bpm = spec.bpm
+  def.scaleId = spec.scaleId
+  def.sets = spec.sets
+  const first = spec.sets[0]
+  if (first) {
+    def.lead = first.lead
+    def.chords = first.chords
+    def.bass = first.bass
+  }
+}
 
 export const STYLES: Style[] = [...STYLE_DEFS].sort(
   (a, b) =>
