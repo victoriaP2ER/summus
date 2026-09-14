@@ -1,4 +1,5 @@
 import { DEMOS, type DemoHit, type DemoNote, type StyleDemo } from './demos'
+import { PROGRESSIONS, withProgression } from './progressions'
 import { style as findStyle } from './styles'
 import { getScale } from '../music'
 import type { DrumVoice } from '../types'
@@ -100,7 +101,7 @@ function triad(root: number, minor: boolean, seventh: boolean): number[] {
  */
 export function improviseGroove(styleId: string, seed: number): StyleDemo {
   const style = findStyle(styleId)
-  const base = DEMOS[styleId] ?? DEMOS.synthwave
+  const base = withProgression(DEMOS[styleId] ?? DEMOS.synthwave, PROGRESSIONS[styleId])
   const rules = readRules(base)
   const random = rng(seed + styleId.length * 7919)
   const total = rules.bars * 4

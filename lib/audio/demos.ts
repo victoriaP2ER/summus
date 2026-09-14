@@ -132,30 +132,61 @@ export const DEMOS: Record<string, StyleDemo> = {
   },
 
   classicRock: {
-    bars: 2,
+    bars: 4,
     drums: [
-      ...hits('crash', [0], 0.7),
-      ...hits('kick', [0, 2.5, 3, 4, 6.5]),
-      ...hits('snare', [1, 3, 5, 7]),
-      ...hits('hat', pulse(0, 8, 0.5), 0.45),
-      ...hits('openhat', [3.5], 0.6),
+      ...hits('crash', [0], 0.65),
+      // Kick on one and pushing into three — the backbone of a rock groove.
+      ...hits('kick', [0, 2.5, 4, 5.5, 6.5, 8, 10.5, 12, 13.5, 14.5], 0.95),
+      ...hits('snare', [1, 3, 5, 7, 9, 11, 13, 15], 0.9),
+      ...hits('hat', pulse(0, 16, 0.5), 0.42),
+      // A fill at the end of the phrase, the way a drummer turns a bar around.
+      ...hits('tom', [15.25, 15.5], 0.7),
+      ...hits('openhat', [15.75], 0.6),
     ],
-    bass: line([-12, -12, -5, -12, -12, -12, -3, -5, -10, -10, -3, -10, -12, -12, -5, -7], 0, 0.5, 0.44, 0.95),
-    // Held power chords, the way a rock riff sits under a vocal.
-    chords: [
-      ...chord([0, 7, 12], 0, 1.8, 0.7),
-      ...chord([0, 7, 12], 2, 1.8, 0.6),
-      ...chord([-2, 5, 10], 4, 1.8, 0.7),
-      ...chord([3, 10, 15], 6, 1.8, 0.6),
+    // Root-driven, with a push onto the off-beat rather than constant eighths.
+    // I - bVII - IV - I, the move half of classic rock is built on.
+    bass: [
+      ...[0, 4, 8, 12].flatMap((bar, i) => {
+        const root = [-12, -14, -7, -12][i]
+        const fifth = root + 7
+        return [
+          { step: root, at: bar, len: 0.9, vel: 1 },
+          { step: root, at: bar + 1.5, len: 0.4, vel: 0.85 },
+          { step: fifth, at: bar + 2, len: 0.9, vel: 0.95 },
+          { step: root, at: bar + 3, len: 0.4, vel: 0.85 },
+          { step: root + 12, at: bar + 3.5, len: 0.4, vel: 0.8 },
+        ]
+      }),
     ],
+    // Power chords with air between them — a strummed rhythm guitar, not a
+    // held pad. Root and fifth only, the way rock guitar is voiced.
+    chords: [0, 4, 8, 12].flatMap((bar, i) => {
+      const root = [0, -2, 5, 0][i]
+      const shape = [root, root + 7, root + 12]
+      return [
+        ...chord(shape, bar, 1.3, 0.9),
+        ...chord(shape, bar + 1.5, 0.4, 0.75),
+        ...chord(shape, bar + 2, 0.9, 0.85),
+        ...chord(shape, bar + 3.5, 0.4, 0.8),
+      ]
+    }),
+    // A pentatonic lick that repeats — rock leads live on repetition.
     lead: [
-      { step: 12, at: 0.5, len: 0.45 },
-      { step: 15, at: 1, len: 0.45 },
+      { step: 12, at: 0.5, len: 0.4 },
+      { step: 15, at: 1, len: 0.4 },
       { step: 17, at: 1.5, len: 0.9 },
-      { step: 15, at: 2.5, len: 1.4 },
-      { step: 10, at: 4.5, len: 0.45 },
-      { step: 12, at: 5, len: 0.45 },
-      { step: 15, at: 5.5, len: 1.9 },
+      { step: 15, at: 2.5, len: 0.4 },
+      { step: 12, at: 3, len: 0.9 },
+      { step: 10, at: 4.5, len: 0.4 },
+      { step: 12, at: 5, len: 0.4 },
+      { step: 15, at: 5.5, len: 1.4 },
+      { step: 17, at: 8.5, len: 0.4 },
+      { step: 19, at: 9, len: 0.9 },
+      { step: 17, at: 10, len: 0.4 },
+      { step: 15, at: 10.5, len: 1.4 },
+      { step: 12, at: 12.5, len: 0.4 },
+      { step: 15, at: 13, len: 0.4 },
+      { step: 12, at: 13.5, len: 2.4 },
     ],
   },
 
@@ -169,10 +200,19 @@ export const DEMOS: Record<string, StyleDemo> = {
       { step: -12, at: 12, len: 3.8, vel: 0.7 },
     ],
     chords: [
-      ...chord([0, 3, 7], 0, 3.8, 0.45),
-      ...chord([2, 7, 10], 4, 3.8, 0.45),
-      ...chord([-1, 4, 7], 8, 3.8, 0.45),
-      ...chord([0, 3, 7], 12, 3.8, 0.45),
+      // A gentle pulse under the melody — an orchestra breathes, it does not drone.
+      ...[0, 4, 8, 12].flatMap((bar, i) => {
+        const shape = [
+          [0, 3, 7],
+          [2, 7, 10],
+          [-1, 4, 7],
+          [0, 3, 7],
+        ][i]
+        return [
+          ...chord(shape, bar, 1.8, 0.45),
+          ...chord(shape.map((n) => n + 12), bar + 2, 1.8, 0.35),
+        ]
+      }),
     ],
     // Beethoven's Ode an die Freude — public domain.
     lead: line([7, 7, 8, 10, 10, 8, 7, 5, 3, 3, 5, 7], 0, 1, 0.9).concat([
@@ -189,13 +229,15 @@ export const DEMOS: Record<string, StyleDemo> = {
 ...hits('kick', [0, 3, 4, 7, 8, 11, 12, 15], 0.8), ...hits('tom', [2, 6, 10, 14], 0.5)],
     bass: [
       { step: -12, at: 0, len: 3.9, vel: 0.85 },
-      { step: -12, at: 4, len: 3.9, vel: 0.85 },
-      { step: -10, at: 8, len: 3.9, vel: 0.85 },
-      { step: -7, at: 12, len: 3.9, vel: 0.85 },
+      { step: -4, at: 4, len: 3.9, vel: 0.85 },
+      { step: -9, at: 8, len: 3.9, vel: 0.85 },
+      { step: -2, at: 12, len: 3.9, vel: 0.85 },
     ],
     chords: [
-      ...chord([0, 3, 7, 12], 0, 7.8, 0.5),
-      ...chord([2, 5, 10, 14], 8, 7.8, 0.5),
+      ...chord([0, 3, 7, 12], 0, 3.8, 0.5),
+      ...chord([8, 12, 15, 20], 4, 3.8, 0.5),
+      ...chord([3, 7, 10, 15], 8, 3.8, 0.5),
+      ...chord([10, 14, 17, 22], 12, 3.8, 0.5),
     ],
     lead: [
       { step: 12, at: 2, len: 1.9 },
@@ -317,7 +359,8 @@ export const DEMOS: Record<string, StyleDemo> = {
     drums: [
       ...hits('kick', pulse(0, 8, 1)),
       ...hits('hat', pulse(0.5, 8, 1), 0.5),
-      ...hits('snare', [3, 7], 0.7),
+      ...hits('snare', [1, 3, 5, 7], 0.75),
+      ...hits('rim', [2.5, 6.5], 0.4),
     ],
     bass: line(Array(16).fill(-12), 0, 0.5, 0.4, 0.95),
     chords: [...chord([0, 3, 7], 0, 3.8, 0.4), ...chord([-2, 3, 7], 4, 3.8, 0.4)],
@@ -503,12 +546,16 @@ export const DEMOS: Record<string, StyleDemo> = {
     bars: 4,
     drums: [],
     bass: [
-      { step: -24, at: 0, len: 7.8, vel: 0.6 },
-      { step: -19, at: 8, len: 7.8, vel: 0.6 },
+      { step: -24, at: 0, len: 3.9, vel: 0.6 },
+      { step: -17, at: 4, len: 3.9, vel: 0.6 },
+      { step: -19, at: 8, len: 3.9, vel: 0.6 },
+      { step: -22, at: 12, len: 3.9, vel: 0.6 },
     ],
     chords: [
-      ...chord([0, 4, 7, 11], 0, 7.8, 0.4),
-      ...chord([-3, 2, 5, 9], 8, 7.8, 0.4),
+      ...chord([0, 4, 7, 11], 0, 3.9, 0.4),
+      ...chord([7, 11, 14, 18], 4, 3.9, 0.4),
+      ...chord([5, 9, 12, 16], 8, 3.9, 0.4),
+      ...chord([2, 5, 9, 14], 12, 3.9, 0.4),
     ],
     lead: [
       { step: 12, at: 1, len: 2.9, vel: 0.5 },

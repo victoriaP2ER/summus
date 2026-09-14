@@ -54,6 +54,12 @@ export interface Preset {
   sample?: string
   /** Natural release in seconds, used as the centre of the Ausklang control */
   release?: number
+  /**
+   * Seconds between the notes of a chord. A pick crosses the strings, it does
+   * not hit them all at once — without this a sampled guitar comb-filters
+   * against itself and stops sounding like an instrument.
+   */
+  strum?: number
 }
 
 const room = (roomSize: number, wet: number, dampening = 3000): FxSpec => ({
@@ -79,6 +85,7 @@ function real(
     gain?: number
     release?: number
     attack?: number
+    strum?: number
   } = {},
 ): Preset {
   return {
@@ -95,6 +102,7 @@ function real(
     fx: options.fx ?? [room(0.55, 0.2)],
     gain: options.gain ?? 0,
     release: options.release ?? 0.8,
+    strum: options.strum,
     options: {
       release: options.release ?? 0.8,
       ...(options.attack !== undefined ? { attack: options.attack } : {}),
@@ -215,11 +223,13 @@ export const PRESETS: Preset[] = [
     tags: ['klavier', 'piano', 'grand', 'tasten'],
     fx: [room(0.5, 0.15)],
     release: 1.2,
+    strum: 0.006,
   }),
   real('harpsichord', 'Cembalo', 'Tasteninstrumente', 'Gezupfte Tasten, barock und silbrig', '🎹', 'harpsichord', 36, 88, {
     tags: ['barock', 'bach', 'kielfluegel', 'tasten'],
     fx: [room(0.6, 0.22)],
     release: 0.6,
+    strum: 0.008,
   }),
   real('organ', 'Orgel', 'Tasteninstrumente', 'Durchgehend und tragend, wie in der Kirche', '🎹', 'organ', 36, 92, {
     tags: ['kirche', 'pfeifen', 'tasten', 'rock'],
@@ -265,11 +275,13 @@ export const PRESETS: Preset[] = [
     tags: ['gitarre', 'klassik', 'spanisch', 'nylon'],
     fx: [room(0.55, 0.2)],
     release: 1,
+    strum: 0.018,
   }),
   real('guitarSteel', 'Westerngitarre', 'Zupfinstrumente', 'Stahlsaiten, hell und drahtig', '🎸', 'guitar-acoustic', 40, 84, {
     tags: ['gitarre', 'folk', 'country', 'akustik'],
     fx: [room(0.55, 0.2)],
     release: 1,
+    strum: 0.016,
   }),
   real('guitarClean', 'E-Gitarre clean', 'Zupfinstrumente', 'Echte E-Gitarre, klar und mit Federhall', '🎸', 'guitarTwang', 40, 86, {
     tags: ['gitarre', 'clean', 'surf', 'indie', 'e-gitarre'],
@@ -279,64 +291,80 @@ export const PRESETS: Preset[] = [
       room(0.66, 0.28),
     ],
     release: 1,
+    strum: 0.012,
   }),
   real('guitarCrunch', 'E-Gitarre angezerrt', 'Zupfinstrumente', 'Angeblasener Amp — Rock-Leads und Riffs', '🎸', 'guitarTwang', 40, 86, {
     tags: ['gitarre', 'rock', 'overdrive', 'lead', 'e-gitarre'],
+    // Two mild stages rather than one extreme one, the way gain builds through
+    // an amp. A single hard shaper turns a chord into intermodulation buzz.
     fx: [
-      { type: 'gain', db: 10 },
-      { type: 'filter', frequency: 110, kind: 'highpass', rolloff: -12 },
-      { type: 'distortion', amount: 0.7, wet: 1, oversample: '4x' },
-      { type: 'filter', frequency: 1300, kind: 'peaking', Q: 0.8, gain: 6 },
-      { type: 'filter', frequency: 5000, rolloff: -24 },
+      { type: 'gain', db: 9 },
+      { type: 'filter', frequency: 120, kind: 'highpass', rolloff: -12 },
+      { type: 'distortion', amount: 0.32, wet: 1, oversample: '2x' },
+      { type: 'filter', frequency: 850, kind: 'peaking', Q: 0.7, gain: 5 },
+      { type: 'distortion', amount: 0.34, wet: 1, oversample: '4x' },
+      // The speaker: a steep roll-off and no fizz above it.
+      { type: 'filter', frequency: 3800, rolloff: -48 },
+      { type: 'filter', frequency: 190, kind: 'highpass', rolloff: -12 },
       room(0.5, 0.16),
     ],
-    gain: -15,
+    gain: -13,
     release: 0.8,
+    strum: 0.014,
   }),
   real('guitarDist', 'E-Gitarre verzerrt', 'Zupfinstrumente', 'Abgedämpfte Powerchords — Punk, Rock, alles was kracht', '🤘', 'guitarStac', 38, 84, {
     tags: ['gitarre', 'distortion', 'punk', 'rock', 'metal', 'powerchord'],
     // Staccato picking through a cranked amp: cut the mud, push the mids that
     // make a riff cut, then roll the top off the way a speaker cabinet does.
     fx: [
-      { type: 'gain', db: 13 },
-      { type: 'filter', frequency: 105, kind: 'highpass', rolloff: -12 },
-      { type: 'distortion', amount: 0.88, wet: 1, oversample: '4x' },
-      { type: 'filter', frequency: 1150, kind: 'peaking', Q: 0.9, gain: 7 },
-      { type: 'filter', frequency: 4400, rolloff: -24 },
+      { type: 'gain', db: 11 },
+      { type: 'filter', frequency: 115, kind: 'highpass', rolloff: -12 },
+      { type: 'distortion', amount: 0.4, wet: 1, oversample: '2x' },
+      { type: 'filter', frequency: 800, kind: 'peaking', Q: 0.7, gain: 6 },
+      { type: 'distortion', amount: 0.42, wet: 1, oversample: '4x' },
+      { type: 'filter', frequency: 3600, rolloff: -48 },
+      { type: 'filter', frequency: 200, kind: 'highpass', rolloff: -12 },
       room(0.38, 0.1),
     ],
-    gain: -17,
-    release: 0.35,
+    gain: -14,
+    release: 0.4,
+    strum: 0.016,
   }),
   real('banjo', 'Banjo', 'Zupfinstrumente', 'Hell und schnarrend — Bluegrass und Country', '🪕', 'banjo', 40, 84, {
     tags: ['bluegrass', 'country', 'folk', 'americana'],
     fx: [{ type: 'filter', frequency: 160, kind: 'highpass', rolloff: -12 }, room(0.5, 0.2)],
     release: 0.7,
+    strum: 0.012,
   }),
   real('ukulele', 'Ukulele', 'Zupfinstrumente', 'Klein, hell und gut gelaunt', '🎸', 'ukulele', 55, 88, {
     tags: ['hawaii', 'folk', 'sommer', 'kleine gitarre'],
     fx: [room(0.55, 0.22)],
     release: 0.8,
+    strum: 0.014,
   }),
   real('concertharp', 'Konzertharfe', 'Zupfinstrumente', 'Große Harfe, perlend und weit', '🪕', 'concertharp', 28, 100, {
     tags: ['harfe', 'orchester', 'engel', 'glissando'],
     fx: [room(0.82, 0.34)],
     release: 1.6,
+    strum: 0.02,
   }),
   real('folkharp', 'Volksharfe', 'Zupfinstrumente', 'Kleinere Harfe, intimer und holziger', '🪕', 'folkharp', 36, 88, {
     tags: ['harfe', 'keltisch', 'folk', 'irisch'],
     fx: [room(0.72, 0.3)],
     release: 1.4,
+    strum: 0.02,
   }),
   real('dantranh', 'Đàn tranh', 'Zupfinstrumente', 'Vietnamesische Wölbbrettzither, hell und biegsam', '🪕', 'dantranh', 45, 84, {
     tags: ['zither', 'asien', 'vietnam', 'koto', 'guzheng'],
     fx: [room(0.7, 0.3)],
     release: 1.2,
+    strum: 0.018,
   }),
   real('strumstick', 'Strumstick', 'Zupfinstrumente', 'Dreisaitiges Wanderinstrument, rau und einfach', '🪕', 'strumstick', 38, 81, {
     tags: ['dulcimer', 'folk', 'appalachian', 'banjo'],
     fx: [room(0.6, 0.24)],
     release: 1,
+    strum: 0.014,
   }),
 
   // ---------------------------------------------------------------- Stabspiele

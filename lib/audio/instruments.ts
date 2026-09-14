@@ -161,9 +161,14 @@ class MelodicInstrument implements Instrument {
   private disposed = false
   /** Last time each pitch was struck — a voice cannot be attacked twice at once. */
   private lastAt = new Map<number, number>()
+  private spec: Preset
+  /** Notes landing on the same instant belong to one chord, and get strummed. */
+  private chordAt = -1
+  private chordIndex = 0
 
   constructor(readonly id: InstrumentId) {
     const spec = preset(id)
+    this.spec = spec
     this.output = new Tone.Volume(spec.gain ?? 0)
     this.chain = (spec.fx ?? []).map(buildFx)
     for (let i = 0; i < this.chain.length; i++) {
@@ -197,7 +202,18 @@ class MelodicInstrument implements Instrument {
     // Times and durations arrive from arithmetic on floats; a value a hair
     // below zero makes Tone throw rather than simply play.
     const pitch = foldIntoRange(midi, this.id)
-    const at = this.slot(pitch, Math.max(0, time || 0))
+
+    // A chord is a pick crossing the strings, not one simultaneous event.
+    // Spreading the notes by a few milliseconds is the difference between a
+    // guitar and a stack of identical samples cancelling each other out.
+    const base = Math.max(0, time || 0)
+    if (Math.abs(base - this.chordAt) < 0.002) this.chordIndex += 1
+    else {
+      this.chordAt = base
+      this.chordIndex = 0
+    }
+    const spread = (this.spec.strum ?? 0) * this.chordIndex
+    const at = this.slot(pitch, base + spread)
     try {
       this.synth.triggerAttackRelease(
         midiToToneNote(pitch),
