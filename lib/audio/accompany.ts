@@ -3,6 +3,7 @@ import { style as findStyle, styleSet } from './styles'
 import { barRoots } from './songsplit'
 import { dedupeNotes, LOOP_COLORS, uid } from '../music'
 import { fitPartToInstrument } from './instruments'
+import { LEVELS } from './levels'
 import { humanize } from './humanize'
 import type { Loop, Note } from '../types'
 
@@ -114,7 +115,14 @@ export function buildAccompaniment(
     }
   }
 
-  const make = (name: string, instrument: string, notes: Note[], kind: Loop['kind'], index: number): Loop => ({
+  const make = (
+    name: string,
+    instrument: string,
+    notes: Note[],
+    kind: Loop['kind'],
+    index: number,
+    volume: number,
+  ): Loop => ({
     id: uid('loop'),
     name,
     bars,
@@ -124,7 +132,7 @@ export function buildAccompaniment(
     color: LOOP_COLORS[(colourOffset + index) % LOOP_COLORS.length],
     muted: false,
     solo: false,
-    volume: kind === 'drum' ? -3 : -4,
+    volume,
     transpose: 0,
   })
 
@@ -132,17 +140,19 @@ export function buildAccompaniment(
   const seed = setIndex * 31 + bars
   if (bassNotes.length) {
     const notes = fitPartToInstrument(humanize(dedupeNotes(bassNotes), styleId, 'bass', seed), style.bass)
-    loops.push(make('Bass', style.bass, notes, 'melodic', 0))
+    loops.push(make('Bass', style.bass, notes, 'melodic', 0, LEVELS.bass))
   }
   if (chordNotes.length) {
     const notes = fitPartToInstrument(
       humanize(dedupeNotes(chordNotes), styleId, 'chords', seed + 1),
       style.chords,
     )
-    loops.push(make('Akkorde', style.chords, notes, 'melodic', 1))
+    loops.push(make('Akkorde', style.chords, notes, 'melodic', 1, LEVELS.chords))
   }
   if (drumNotes.length) {
-    loops.push(make('Schlagzeug', 'drums', humanize(dedupeNotes(drumNotes), styleId, 'drums', seed + 2), 'drum', 2))
+    loops.push(
+      make('Schlagzeug', 'drums', humanize(dedupeNotes(drumNotes), styleId, 'drums', seed + 2), 'drum', 2, LEVELS.drums),
+    )
   }
   return loops
 }

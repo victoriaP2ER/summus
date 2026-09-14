@@ -91,7 +91,30 @@ export async function renderSong(
     sampleRate,
   )
 
-  return rendered.get() as AudioBuffer
+  const buffer = rendered.get() as AudioBuffer
+  normalise(buffer, 0.89)
+  return buffer
+}
+
+/**
+ * Bring the render to a fixed peak.
+ *
+ * The limiter catches sustained loudness but a dense arrangement can still push
+ * a single transient past full scale, and a WAV clips there. Scaling the whole
+ * render keeps the balance and guarantees clean headroom.
+ */
+function normalise(buffer: AudioBuffer, target: number): void {
+  let peak = 0
+  for (let c = 0; c < buffer.numberOfChannels; c++) {
+    const data = buffer.getChannelData(c)
+    for (let i = 0; i < data.length; i++) peak = Math.max(peak, Math.abs(data[i]))
+  }
+  if (peak < 1e-5 || peak <= target) return
+  const gain = target / peak
+  for (let c = 0; c < buffer.numberOfChannels; c++) {
+    const data = buffer.getChannelData(c)
+    for (let i = 0; i < data.length; i++) data[i] *= gain
+  }
 }
 
 /** 16-bit PCM WAV — lossless and playable everywhere. */

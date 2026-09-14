@@ -2,6 +2,7 @@ import { DEMOS, type DemoHit, type DemoNote, type StyleDemo } from './demos'
 import { PROGRESSIONS, withProgression } from './progressions'
 import { style as findStyle, styleSet } from './styles'
 import { improviseGroove } from './improvise'
+import { LEVELS } from './levels'
 import { generateLead } from './melody'
 import { dedupeNotes, LOOP_COLORS, uid } from '../music'
 import { fitPartToInstrument } from './instruments'
@@ -263,7 +264,14 @@ export function grooveToLoops(
   }
 
   const totalBars = repeats * demo.bars
-  const make = (name: string, instrument: string, notes: Note[], kind: Loop['kind'], index: number): Loop => ({
+  const make = (
+    name: string,
+    instrument: string,
+    notes: Note[],
+    kind: Loop['kind'],
+    index: number,
+    volume: number,
+  ): Loop => ({
     id: uid('loop'),
     name,
     bars: totalBars,
@@ -273,7 +281,7 @@ export function grooveToLoops(
     color: LOOP_COLORS[index % LOOP_COLORS.length],
     muted: false,
     solo: false,
-    volume: kind === 'drum' ? -3 : -4,
+    volume,
     transpose: 0,
   })
 
@@ -299,18 +307,20 @@ export function grooveToLoops(
   // the editor shows the pitches that actually sound.
   if (lead.length) {
     const notes = fitPartToInstrument(humanize(dedupeNotes(lead), styleId, 'lead', seed), style.lead)
-    loops.push(make('Melodie-Vorschlag', style.lead, notes, 'melodic', 0))
+    loops.push(make('Melodie-Vorschlag', style.lead, notes, 'melodic', 0, LEVELS.lead))
   }
   if (bass.length) {
     const notes = fitPartToInstrument(humanize(dedupeNotes(bass), styleId, 'bass', seed + 1), style.bass)
-    loops.push(make('Bass', style.bass, notes, 'melodic', 1))
+    loops.push(make('Bass', style.bass, notes, 'melodic', 1, LEVELS.bass))
   }
   if (chords.length) {
     const notes = fitPartToInstrument(humanize(dedupeNotes(chords), styleId, 'chords', seed + 2), style.chords)
-    loops.push(make('Akkorde', style.chords, notes, 'melodic', 2))
+    loops.push(make('Akkorde', style.chords, notes, 'melodic', 2, LEVELS.chords))
   }
   if (drums.length) {
-    loops.push(make('Schlagzeug', 'drums', humanize(dedupeNotes(drums), styleId, 'drums', seed + 3), 'drum', 3))
+    loops.push(
+      make('Schlagzeug', 'drums', humanize(dedupeNotes(drums), styleId, 'drums', seed + 3), 'drum', 3, LEVELS.drums),
+    )
   }
   return loops
 }
