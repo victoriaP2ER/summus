@@ -132,7 +132,7 @@ export const PRESETS: Preset[] = [
     fx: [room(0.75, 0.28, 2000)],
     release: 1,
   }),
-  real('contrabass', 'Kontrabass', 'Streichinstrumente', 'Das tiefste Streichinstrument, gestrichen', '🎻', 'contrabass', 28, 60, {
+  real('contrabass', 'Kontrabass', 'Streichinstrumente', 'Das tiefste Streichinstrument, gestrichen', '🎻', 'contrabass', 28, 57, {
     tags: ['bass', 'streicher', 'orchester', 'jazz'],
     fx: [room(0.6, 0.2, 1500)],
     release: 0.9,
@@ -225,7 +225,7 @@ export const PRESETS: Preset[] = [
     release: 1.2,
     strum: 0.006,
   }),
-  real('harpsichord', 'Cembalo', 'Tasteninstrumente', 'Gezupfte Tasten, barock und silbrig', '🎹', 'harpsichord', 36, 88, {
+  real('harpsichord', 'Cembalo', 'Tasteninstrumente', 'Gezupfte Tasten, barock und silbrig', '🎹', 'harpsichord', 29, 86, {
     tags: ['barock', 'bach', 'kielfluegel', 'tasten'],
     fx: [room(0.6, 0.22)],
     release: 0.6,
@@ -297,15 +297,20 @@ export const PRESETS: Preset[] = [
     tags: ['gitarre', 'rock', 'overdrive', 'lead', 'e-gitarre'],
     // Two mild stages rather than one extreme one, the way gain builds through
     // an amp. A single hard shaper turns a chord into intermodulation buzz.
+    // The DI recordings are dark — almost nothing above 2.5 kHz — so the amp
+    // has to *make* the bite rather than filter it away, and the low end has to
+    // survive: a low E power chord sits at 82 Hz.
     fx: [
-      { type: 'gain', db: 9 },
-      { type: 'filter', frequency: 120, kind: 'highpass', rolloff: -12 },
-      { type: 'distortion', amount: 0.32, wet: 1, oversample: '2x' },
-      { type: 'filter', frequency: 850, kind: 'peaking', Q: 0.7, gain: 5 },
-      { type: 'distortion', amount: 0.34, wet: 1, oversample: '4x' },
-      // The speaker: a steep roll-off and no fizz above it.
-      { type: 'filter', frequency: 3800, rolloff: -48 },
-      { type: 'filter', frequency: 190, kind: 'highpass', rolloff: -12 },
+      { type: 'filter', frequency: 75, kind: 'highpass', rolloff: -12 },
+      { type: 'gain', db: 10 },
+      { type: 'distortion', amount: 0.34, wet: 1, oversample: '2x' },
+      { type: 'filter', frequency: 780, kind: 'peaking', Q: 0.8, gain: 5 },
+      { type: 'distortion', amount: 0.36, wet: 1, oversample: '4x' },
+      // Presence — where a rock guitar's bite lives.
+      { type: 'filter', frequency: 2900, kind: 'peaking', Q: 1.1, gain: 6 },
+      // The speaker: rolls off high, but not before the presence.
+      { type: 'filter', frequency: 5600, rolloff: -48 },
+      { type: 'filter', frequency: 90, kind: 'highpass', rolloff: -12 },
       room(0.5, 0.16),
     ],
     gain: -13,
@@ -317,13 +322,14 @@ export const PRESETS: Preset[] = [
     // Staccato picking through a cranked amp: cut the mud, push the mids that
     // make a riff cut, then roll the top off the way a speaker cabinet does.
     fx: [
-      { type: 'gain', db: 11 },
-      { type: 'filter', frequency: 115, kind: 'highpass', rolloff: -12 },
-      { type: 'distortion', amount: 0.4, wet: 1, oversample: '2x' },
-      { type: 'filter', frequency: 800, kind: 'peaking', Q: 0.7, gain: 6 },
-      { type: 'distortion', amount: 0.42, wet: 1, oversample: '4x' },
-      { type: 'filter', frequency: 3600, rolloff: -48 },
-      { type: 'filter', frequency: 200, kind: 'highpass', rolloff: -12 },
+      { type: 'filter', frequency: 70, kind: 'highpass', rolloff: -12 },
+      { type: 'gain', db: 12 },
+      { type: 'distortion', amount: 0.42, wet: 1, oversample: '2x' },
+      { type: 'filter', frequency: 750, kind: 'peaking', Q: 0.8, gain: 6 },
+      { type: 'distortion', amount: 0.44, wet: 1, oversample: '4x' },
+      { type: 'filter', frequency: 3000, kind: 'peaking', Q: 1.1, gain: 7 },
+      { type: 'filter', frequency: 5200, rolloff: -48 },
+      { type: 'filter', frequency: 85, kind: 'highpass', rolloff: -12 },
       room(0.38, 0.1),
     ],
     gain: -14,
