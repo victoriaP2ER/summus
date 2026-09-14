@@ -271,19 +271,19 @@ export const PRESETS: Preset[] = [
   },
 
   // ---------------------------------------------------------- Zupfinstrumente
-  real('guitarNylon', 'Konzertgitarre', 'Zupfinstrumente', 'Warme Nylonsaiten, gezupft', '🎸', 'guitar-nylon', 40, 84, {
+  real('guitarNylon', 'Konzertgitarre', 'Zupfinstrumente', 'Warme Nylonsaiten, gezupft', '🎸', 'guitar-nylon', 40, 76, {
     tags: ['gitarre', 'klassik', 'spanisch', 'nylon'],
     fx: [room(0.55, 0.2)],
     release: 1,
     strum: 0.018,
   }),
-  real('guitarSteel', 'Westerngitarre', 'Zupfinstrumente', 'Stahlsaiten, hell und drahtig', '🎸', 'guitar-acoustic', 40, 84, {
+  real('guitarSteel', 'Westerngitarre', 'Zupfinstrumente', 'Stahlsaiten, hell und drahtig', '🎸', 'guitar-acoustic', 40, 76, {
     tags: ['gitarre', 'folk', 'country', 'akustik'],
     fx: [room(0.55, 0.2)],
     release: 1,
     strum: 0.016,
   }),
-  real('guitarClean', 'E-Gitarre clean', 'Zupfinstrumente', 'Echte E-Gitarre, klar und mit Federhall', '🎸', 'guitarTwang', 40, 86, {
+  real('guitarClean', 'E-Gitarre clean', 'Zupfinstrumente', 'Echte E-Gitarre, klar und mit Federhall', '🎸', 'guitarTwang', 40, 76, {
     tags: ['gitarre', 'clean', 'surf', 'indie', 'e-gitarre'],
     fx: [
       { type: 'filter', frequency: 90, kind: 'highpass', rolloff: -12 },
@@ -293,7 +293,7 @@ export const PRESETS: Preset[] = [
     release: 1,
     strum: 0.012,
   }),
-  real('guitarCrunch', 'E-Gitarre angezerrt', 'Zupfinstrumente', 'Angeblasener Amp — Rock-Leads und Riffs', '🎸', 'guitarTwang', 40, 86, {
+  real('guitarCrunch', 'E-Gitarre angezerrt', 'Zupfinstrumente', 'Angeblasener Amp — Rock-Leads und Riffs', '🎸', 'guitarTwang', 40, 69, {
     tags: ['gitarre', 'rock', 'overdrive', 'lead', 'e-gitarre'],
     // Two mild stages rather than one extreme one, the way gain builds through
     // an amp. A single hard shaper turns a chord into intermodulation buzz.
@@ -312,7 +312,7 @@ export const PRESETS: Preset[] = [
     release: 0.8,
     strum: 0.014,
   }),
-  real('guitarDist', 'E-Gitarre verzerrt', 'Zupfinstrumente', 'Abgedämpfte Powerchords — Punk, Rock, alles was kracht', '🤘', 'guitarStac', 38, 84, {
+  real('guitarDist', 'E-Gitarre verzerrt', 'Zupfinstrumente', 'Abgedämpfte Powerchords — Punk, Rock, alles was kracht', '🤘', 'guitarStac', 40, 59, {
     tags: ['gitarre', 'distortion', 'punk', 'rock', 'metal', 'powerchord'],
     // Staccato picking through a cranked amp: cut the mud, push the mids that
     // make a riff cut, then roll the top off the way a speaker cabinet does.
@@ -330,7 +330,7 @@ export const PRESETS: Preset[] = [
     release: 0.4,
     strum: 0.016,
   }),
-  real('banjo', 'Banjo', 'Zupfinstrumente', 'Hell und schnarrend — Bluegrass und Country', '🪕', 'banjo', 40, 84, {
+  real('banjo', 'Banjo', 'Zupfinstrumente', 'Hell und schnarrend — Bluegrass und Country', '🪕', 'banjo', 45, 79, {
     tags: ['bluegrass', 'country', 'folk', 'americana'],
     fx: [{ type: 'filter', frequency: 160, kind: 'highpass', rolloff: -12 }, room(0.5, 0.2)],
     release: 0.7,

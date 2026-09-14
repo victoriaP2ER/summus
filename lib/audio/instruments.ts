@@ -41,6 +41,34 @@ export interface Instrument {
   dispose(): void
 }
 
+/**
+ * Move a whole part into its instrument's register, by whole octaves.
+ *
+ * Folding note by note at playback time makes the editor show one pitch and
+ * play another. Placing the part correctly up front keeps what you see and
+ * what you hear the same, and keeps the shape of the line intact.
+ */
+export function fitPartToInstrument<T extends { pitch: number }>(
+  notes: T[],
+  id: InstrumentId,
+): T[] {
+  if (!notes.length) return notes
+  const { low, high } = preset(id)
+  if (high <= low) return notes
+  const pitches = [...notes.map((n) => n.pitch)].sort((a, b) => a - b)
+  const median = pitches[Math.floor(pitches.length / 2)]
+  const centre = (low + high) / 2
+  let shift = Math.round((centre - median) / 12) * 12
+
+  // Do not push the extremes outside the range just to centre the middle.
+  const lowest = pitches[0]
+  const highest = pitches[pitches.length - 1]
+  while (shift > 0 && highest + shift > high) shift -= 12
+  while (shift < 0 && lowest + shift < low) shift += 12
+  if (shift === 0) return notes
+  return notes.map((n) => ({ ...n, pitch: n.pitch + shift }))
+}
+
 /** Keep a note inside what the instrument can actually play, by whole octaves. */
 export function foldIntoRange(midi: number, id: InstrumentId): number {
   const { low, high } = preset(id)

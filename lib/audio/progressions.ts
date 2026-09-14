@@ -59,7 +59,6 @@ export function withProgression(demo: StyleDemo, roots: number[] | undefined): S
   const source = demo.bars
   const repeats = Math.ceil(4 / source)
   const chordTemplate = template(demo.chords)
-  const bassRoot = demo.bass.length ? Math.min(...demo.bass.map((n) => n.step)) : 0
 
   const drums: DemoHit[] = []
   const chords: DemoNote[] = []
@@ -87,7 +86,7 @@ export function withProgression(demo: StyleDemo, roots: number[] | undefined): S
       const bar = Math.floor((note.at + offset) / 4)
       const root = roots[bar % roots.length]
       // Keep the line's shape, move its root with the harmony.
-      bass.push({ ...note, at: note.at + offset, step: note.step - bassRoot + bassRoot + root })
+      bass.push({ ...note, at: note.at + offset, step: note.step + root })
     }
 
     for (const note of demo.lead) {

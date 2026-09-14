@@ -4,6 +4,7 @@ import { style as findStyle, styleSet } from './styles'
 import { improviseGroove } from './improvise'
 import { generateLead } from './melody'
 import { dedupeNotes, LOOP_COLORS, uid } from '../music'
+import { fitPartToInstrument } from './instruments'
 import { humanize } from './humanize'
 import type { DrumVoice, Loop, Note } from '../types'
 
@@ -294,14 +295,19 @@ export function grooveToLoops(
     }))
 
   const loops: Loop[] = []
+  // Place each part in its instrument's own register before anything else, so
+  // the editor shows the pitches that actually sound.
   if (lead.length) {
-    loops.push(make('Melodie-Vorschlag', style.lead, humanize(dedupeNotes(lead), styleId, 'lead', seed), 'melodic', 0))
+    const notes = fitPartToInstrument(humanize(dedupeNotes(lead), styleId, 'lead', seed), style.lead)
+    loops.push(make('Melodie-Vorschlag', style.lead, notes, 'melodic', 0))
   }
   if (bass.length) {
-    loops.push(make('Bass', style.bass, humanize(dedupeNotes(bass), styleId, 'bass', seed + 1), 'melodic', 1))
+    const notes = fitPartToInstrument(humanize(dedupeNotes(bass), styleId, 'bass', seed + 1), style.bass)
+    loops.push(make('Bass', style.bass, notes, 'melodic', 1))
   }
   if (chords.length) {
-    loops.push(make('Akkorde', style.chords, humanize(dedupeNotes(chords), styleId, 'chords', seed + 2), 'melodic', 2))
+    const notes = fitPartToInstrument(humanize(dedupeNotes(chords), styleId, 'chords', seed + 2), style.chords)
+    loops.push(make('Akkorde', style.chords, notes, 'melodic', 2))
   }
   if (drums.length) {
     loops.push(make('Schlagzeug', 'drums', humanize(dedupeNotes(drums), styleId, 'drums', seed + 3), 'drum', 3))

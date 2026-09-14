@@ -2,6 +2,7 @@ import { groove as findGroove } from './grooves'
 import { style as findStyle, styleSet } from './styles'
 import { barRoots } from './songsplit'
 import { dedupeNotes, LOOP_COLORS, uid } from '../music'
+import { fitPartToInstrument } from './instruments'
 import { humanize } from './humanize'
 import type { Loop, Note } from '../types'
 
@@ -130,10 +131,15 @@ export function buildAccompaniment(
   const loops: Loop[] = []
   const seed = setIndex * 31 + bars
   if (bassNotes.length) {
-    loops.push(make('Bass', style.bass, humanize(dedupeNotes(bassNotes), styleId, 'bass', seed), 'melodic', 0))
+    const notes = fitPartToInstrument(humanize(dedupeNotes(bassNotes), styleId, 'bass', seed), style.bass)
+    loops.push(make('Bass', style.bass, notes, 'melodic', 0))
   }
   if (chordNotes.length) {
-    loops.push(make('Akkorde', style.chords, humanize(dedupeNotes(chordNotes), styleId, 'chords', seed + 1), 'melodic', 1))
+    const notes = fitPartToInstrument(
+      humanize(dedupeNotes(chordNotes), styleId, 'chords', seed + 1),
+      style.chords,
+    )
+    loops.push(make('Akkorde', style.chords, notes, 'melodic', 1))
   }
   if (drumNotes.length) {
     loops.push(make('Schlagzeug', 'drums', humanize(dedupeNotes(drumNotes), styleId, 'drums', seed + 2), 'drum', 2))
