@@ -1,4 +1,3 @@
-import { preset } from './presets'
 import type { InstrumentId } from '../types'
 
 export type Motif =
@@ -103,9 +102,10 @@ const STYLE_DEFS: Style[] = [
     alternates: ['guitarDist', 'guitarClean'],
     picks: ['guitarDist', 'guitarCrunch', 'guitarClean', 'organ', 'piano', 'epiano', 'harmonica', 'trumpet', 'bass', 'bassGuitar'],
     sets: [
-      { lead: 'guitarCrunch', chords: 'guitarDist', bass: 'bass' },
-      { lead: 'guitarDist', chords: 'guitarClean', bass: 'bass' },
-      { lead: 'organ', chords: 'guitarDist', bass: 'bass' },
+      { lead: 'guitarCrunch', chords: 'guitarDist', bass: 'bassGuitar' },
+      { lead: 'guitarDist', chords: 'guitarDist', bass: 'bass' },
+      { lead: 'guitarCrunch', chords: 'guitarClean', bass: 'bassGuitar' },
+      { lead: 'organ', chords: 'guitarDist', bass: 'bassGuitar' },
     ],
     colors: ['#f43f5e', '#1f2937'],
     motif: 'bolt',
@@ -124,8 +124,10 @@ const STYLE_DEFS: Style[] = [
     picks: ['guitarCrunch', 'guitarDist', 'guitarClean', 'organ', 'piano', 'epiano', 'bass', 'harmonica', 'sax', 'trumpet', 'wurlitzer', 'bassGuitar'],
     sets: [
       { lead: 'guitarCrunch', chords: 'guitarCrunch', bass: 'bassGuitar' },
-      { lead: 'organ', chords: 'guitarCrunch', bass: 'bass' },
+      { lead: 'guitarCrunch', chords: 'organ', bass: 'bassGuitar' },
+      { lead: 'organ', chords: 'guitarCrunch', bass: 'bassGuitar' },
       { lead: 'harmonica', chords: 'guitarClean', bass: 'bassGuitar' },
+      { lead: 'guitarDist', chords: 'guitarCrunch', bass: 'bass' },
     ],
     colors: ['#fb923c', '#7f1d1d'],
     motif: 'amp',
@@ -469,31 +471,6 @@ export function style(id: string): Style {
   return STYLE_DEFS.find((s) => s.id === id) ?? STYLE_DEFS[0]
 }
 
-const BASS_FAMILIES = new Set(['Bass'])
-const CHORD_FAMILIES = new Set([
-  'Tasteninstrumente',
-  'Zupfinstrumente',
-  'Streichinstrumente',
-  'Synthesizer',
-  'Chor',
-])
-
-/** Everything in this style's pool that can hold down each role. */
-function pools(id: string): { lead: InstrumentId[]; chords: InstrumentId[]; bass: InstrumentId[] } {
-  const s = style(id)
-  const all = [...new Set([...s.picks, ...s.alternates, s.lead, s.chords, s.bass])]
-  const bass = all.filter(
-    (i) => BASS_FAMILIES.has(preset(i).family) || ['contrabass', 'tuba'].includes(i),
-  )
-  const isLow = (i: InstrumentId) => bass.includes(i)
-  return {
-    lead: all.filter((i) => !isLow(i)),
-    // Chords need something that can hold a voicing, not a bass instrument.
-    chords: all.filter((i) => CHORD_FAMILIES.has(preset(i).family) && !isLow(i)),
-    bass: bass.length ? bass : [s.bass],
-  }
-}
-
 /**
  * One of the style's line-ups.
  *
@@ -501,35 +478,26 @@ function pools(id: string): { lead: InstrumentId[]; chords: InstrumentId[]; bass
  * from the style's own instrument pool — so clicking on for a fifth or sixth
  * variation still changes who is playing, not only what they play.
  */
+/**
+ * One of the style's line-ups.
+ *
+ * Every one is written out deliberately. An earlier version derived further
+ * ones from the style's instrument pool, which produced combinations nobody
+ * would choose — a punk song fronted by a grand piano. Variety comes from the
+ * grooves and the melodies instead, where it cannot break the genre.
+ */
 export function styleSet(
   id: string,
   index: number,
 ): { lead: InstrumentId; chords: InstrumentId; bass: InstrumentId } {
   const s = style(id)
   const written = s.sets ?? []
-  const total = styleSetCount(id)
-  const wrapped = ((index % total) + total) % total
-  if (wrapped < written.length) return written[wrapped]
-
-  const pool = pools(id)
-  const step = wrapped - written.length
-  const pickFrom = (list: InstrumentId[], offset: number, fallback: InstrumentId) =>
-    list.length ? list[(step * offset + written.length) % list.length] : fallback
-
-  const lead = pickFrom(pool.lead, 3, s.lead)
-  // Different offsets keep the three roles from moving in lockstep.
-  let chords = pickFrom(pool.chords, 5, s.chords)
-  if (chords === lead && pool.chords.length > 1) {
-    chords = pool.chords[(pool.chords.indexOf(chords) + 1) % pool.chords.length]
-  }
-  return { lead, chords, bass: pickFrom(pool.bass, 2, s.bass) }
+  if (!written.length) return { lead: s.lead, chords: s.chords, bass: s.bass }
+  return written[((index % written.length) + written.length) % written.length]
 }
 
 export function styleSetCount(id: string): number {
-  const written = style(id).sets?.length ?? 1
-  const pool = pools(id)
-  // Enough derived line-ups to keep exploring, capped so the cycle stays finite.
-  return written + Math.min(6, Math.max(0, pool.lead.length - written))
+  return style(id).sets?.length || 1
 }
 
 /** Everything this style suggests, with the roles first. */
